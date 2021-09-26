@@ -1,0 +1,22 @@
+ShopOwnerBTC = "Username123" //Your BTC account username
+AutoPassword = "client_secure_auto_payment" //A password placeholder you can use if you want to send money from inside a script without your password
+Recipient = "Username123" //The BTC account that will recive the money
+Money = "1" //The Money you want to transfer
+Info = current_date[:-6] //A timestamp on the transfer that has to be used in this format!
+SecretShopKey = "1234567890abcdefghijklmnopqrstuvwxyz" //Your BTC SecretShopKey can be seen by using "BTC login" in the BTC client
+
+if params.len == 6 then
+	//Checks if the transaction was completed
+	//[taker]+[money]+[info]+[random]+[owner]+[key]
+	if params[5] != md5(params[0]+params[1]+params[2]+params[3]+params[4]+SecretShopKey) then exit("Shop Security Values Do Not Match")
+	print(params[1]+" BTC was sent to "+params[0])
+else
+	Random = str(rnd()) //Creates a random string for added security, you can use other methods to create this string but it needs to be at least 15 characters long
+	if not get_shell.host_computer.File(home_dir+"/BTC") then exit(home_dir+"/BTC missing. Download the BTC client from 11.170.0.227") //Checks if the BTC client can be found on the computer
+	//BTC: [action] [payee] [pass] [taker] [money] [info:random:payee:md5(key+taker+money+info+random+payee)]
+	//Launches the BTC with the information needed for a transaction
+	exit(get_shell.launch(home_dir+"/BTC", "transfer "+ShopOwnerBTC+" "+AutoPassword+" "+Recipient+" "+Money+" "+Info+":"+Random+":"+ShopOwnerBTC+":"+md5(SecretShopKey+Recipient+Money+Info+Random+ShopOwnerBTC)))
+end if
+
+//This script will tranfer 1 BTC from one account to another automatically without password or user_input, your SecretShopKey is used as the password
+print("Running after transfer")

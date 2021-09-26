@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<style>
+html{
+	background-color: #101010;
+	height: 100%;
+	margin: 0;
+	overflow-y: auto;
+}
+.logo{
+	padding-bottom: 25px;
+	display: table-cell;
+	margin: 0 auto;
+}
+.flag_white{color: #FFFFFF;}
+.flag_blue{color: #0039a6;}
+.flag_red{color: #d52b1e;}
+.navi{
+	text-align: center;
+	padding-bottom: 5px;
+}
+
+.navi button span{
+	display: block;
+	margin-top: 13px;
+	cursor: pointer;
+}
+.navi button img{
+	height: 40px;
+	width: 40px;
+	margin-top: -10px;
+}
+article{
+	display: block;
+	width: 95%;
+	border: 1px solid #00FF00;
+	color: #1AE65B;
+	padding: 15px;
+	margin: 15px auto;}
+h2{
+	display: inline-block;
+	font-size: 12px;
+	color: #FFFFFF;
+	width: 100%;
+	text-align: center;}
+h3{
+	display: block;
+	font-size: 16px;
+	width: 100%;
+	color: yellow;
+}
+pre{
+	display: block;
+	white-space: pre-wrap;
+	font: 26 Arial;
+	margin: 0;
+	font-weight: bold;
+	float: left;
+}
+console{
+	color: #FFFFFF;
+	width: 100%;
+}
+console p{
+	font-size: 16px;
+	font-weight: bold;
+	margin: 0;
+	white-space: pre-wrap;
+	z-index: 0;
+}
+console table{
+	table-layout: fixed;
+	display: table;
+	width: 90%;
+	max-width: 90%;
+	border-collapse: collapse;
+	border: 1px solid purple;
+	z-index: 0;
+}
+console table tr{
+	display: table-row;
+	width: auto;
+	margin: 0;
+	padding: 0;
+}
+console table tr td{
+	display: table-cell;
+	border: 1px solid purple;
+	width: auto;
+	margin: 0;
+	padding: 0;
+}
+button{
+	border: 2px solid #00FF00;
+	color: #1AE65B;
+	text-align: center;
+	background-color: #101010;
+	height: 3em;
+	margin: auto;
+	vertical-align: middle;
+	width: 15.5%;
+	font-weight: bold;
+}
+article div{
+	margin: 15px;
+}
+#About, #articlez{
+	display: none;
+	height: 60vh;
+}
+#articlez{
+	height: auto;
+}
+
+#articlez #a0, #a1, #a2{
+	display: none;
+}
+
+button#Button4{
+	border-radius: 0 10px;
+}
+button#Button1{
+	border-radius: 10px 0;
+	color: red;
+}
+#main p{
+	margin-top: 25px;
+}
+article b{
+	color: #00FF00;}
+#articlez p{
+	text-align: justify;}
+
+.ssilka{
+	font-weight: 900;
+	color: Aqua;
+	text-decoration: underline;
+	cursor: pointer;
+}
+.ssilka::before{
+	cursor: pointer;
+}
+.ssilka:default{
+	cursor: pointer;
+}
+</style>
+<p style="display:none">
+Grey Hack Rus: Welcome! Добро Пожаловать! 。。。。。。。。。。。。。。。。。。
+。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。
+Приветствуем.вас.на.сайте.ру_сообщества.игрьI.Grey.Hack.。。。。。。。。。。。
+ 。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。
+Приветствуем.тебя.исследователь.кибер.пространства.。。。。。。。。。。。。。。。
+ 。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。
+Заходи!.МьI.всегда.радьI.новьIм.людям.и.свежим.идеям.。。。。。。。。。。。。。。。。。
+。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。
+
+
+。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。 
+。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。 
+
+</p>
+<div class="logo">
+	<pre class="flag_white">个 ____   _____  ____  __    __    _     _  ____   ____    _     _       _____  _     _   ____</pre>
+	<pre class="flag_blue">个|  ___  |____/ |____     \_/       |____| |____| |         |___/        |____/  |      |  |____</pre>
+	<pre class="flag_red">个|____|  |    \_ |____      |        |      | |      | |____   |    \_       |     \_  |____|  _____|</pre>
+</div>
+<div class="navi">
+	<button type="button" id="Button1" class="btn btn-primary" onClick="LinkChange('main', this);"><span>Main</span></button>
+	<button type="button" id="Button2" onClick="LinkChange('articlez', this);"><span>Article</span></button>
+	<button type="button" class="btn btn-primary" id="RegisterMail"><img src="email_alter.png"> Email</button>
+	<button type="button" class="btn btn-primary" id="LoginBank"><img src="bank.png"> Bank $</button>
+	<button type="button" class="btn btn-primary" id="InformaticaShop"><img src="gecko.png">Shop</button>
+	<button type="button" id="Button4" class="btn btn-primary" onClick="LinkChange('About', this);"><span>About</span></button>
+</div>
+<article>
+	<div id="main">
+		<p><b>Ещё одного поймали сегодня</b>, это во всех газетах. «Подросток арестован за компьютерное преступление», «Хакер арестован за взлом банка».</p>
+		<p><b>ЧёртовьI дети…</b> Они все одинаковьI.</p>
+		<p><b>Но вьI, с вашей трёхэлементной психологией</b> и техномозгом 50-х годов, вьI смотрели когда-нибудь в глаза хакеру? ВьI когда-нибудь задумьIвались, что заставляет его двигаться, какие сильI сформировали его?</p>
+		<p><b>Я — хакер</b>, войдите в мой мир…</p>
+		<p><b>Мой мир начинается со школьI</b>. Я умнее большинства других детей; та чушь, которой учат нас в школе, скучна.</p>
+		<p><b>Чёртов лентяй…</b> ВьI все одинаковьI.</p>
+		<p><b>Я в средних или старших классах</b>. Слушаю учительницу, которая в пятнадцатьIй раз объясняет, как сокращать дробь. Да понял я уже. «Нет, мисс Смит, я не покажу вам мою работу. Я сделал её в уме…»</p>
+		<p><b>Чёртов ребёнок</b>, наверняка списал. Они все одинаковьI.</p>
+		<p><b>Сегодня я сделал открьIтие</b>. Я открьIл компьютер. Секунду… это здорово! Он делает то, что я хочу. Если он совершает ошибку — это потому что я напортачил. Не потому, что я ему не нравлюсь… Или он запуган мной… Или думает, что я слишком умньIй… Или не любит учиться и не должен бьIть здесь…</p>
+		<p><b>Чёртов мальчишка</b>. Всё, что он делает, — играет в игрьI. Они все одинаковьI.</p>
+		<p><b>И это случилось…</b> дверь в мир распахнулась… посланньIй электронньIй импульс рванулся по телефонньIм линиям, как героин по венам наркомана; убежище от повседневной некомпетентности найдено. «Это оно… То, к чему я принадлежу». Я знаю здесь каждого… даже если я никогда не встречал его, никогда не говорил с ним и могу больше никогда его не усльIшать… Я знаю вас всех… </p>
+		<p><b>Чёртов пацан</b>, опять занимает телефонную линию. Они все одинаковьI.</p>
+		<p><b>ВьI готовьI поклясться своей задницей, что мьI все одинаковьI</b>. В школе нас всех кормили детским питанием с ложечки, в то время как нам хотелось бифштекса… Те кусочки мяса, что нам доставались, бьIли разжёваньI и безвкусньI. Над нами доминировали садистьI, и нас игнорировали равнодушньIе. Те немногие, кто могли чему-то научить, находили в нас желанньIх учеников, но они бьIли как капли водьI в пустьIне.</p>
+		<p><b>Теперь это наш мир…</b> Мир электронов и переключателей, мир красотьI бодов. МьI используем существующие системьI, не платя за то, что могло бьIть дешевле грязи, если бьI не управлялось грязньIми спекулянтами, и вьI назьIваете нас преступниками. МьI исследуем, и вьI назьIваете нас преступниками. МьI ищем знания… и вьI назьIваете нас преступниками. МьI существуем без цвета кожи, без национальности, без религиозньIх распрей… и вьI назьIваете нас преступниками. ВьI строите атомньIе бомбьI, вьI развязьIваете войньI, убиваете, жульничаете и лжёте нам, пьIтаясь заставить нас поверить, что всё это — для нашего же блага, и мьI всё ещё преступники.</p>
+		<p><b>Да, я преступник.</b> Моё преступление — любопьIтство. Моё преступление в том, что я сужу людей не по тому, как они вьIглядят, а по тому, что они говорят и думают. Моё преступление в том, что я намного умнее вас. Это то, что вьI мне никогда не простите.</p>
+		<p><b>Я хакер. И это мой манифест</b>. ВьI можете остановить одного из нас, но вам не остановить нас всех… в конце концов, мьI все одинаковьI.</p>
+	</div>
+	<div id="articlez">
+		<p>Не судите строго. МузьIкант играет как умеет.</p>
+		<ul>
+			<ol class="ssilka" onClick="ArticleChange('a0');">FS_Security</ol>
+			<ol class="ssilka" onClick="ArticleChange('a1');">Internet_Security</ol>
+			<ol class="ssilka" onClick="ArticleChange('a2');">Router_Security</ol>
+		</ul>
+		<p>P. S.> СсьIлки кликабельньI!</p>
+		<div id="a0">
+			<p style="font-style:italic;color:red;">Всё написанное нужно применять исключительно в игре и актуально для текущей версии “0.7.3612 – ALPHA”. Не пьIтайтесь повторить на «живом» компьютере. Данное руководство заточено для единственного пользователя root.</p>
+			<h3>Защити себя сам или введение в боевьIе действия.</h3>
+			<p>Желательно это сделать, до подключения к сети. Условно существует 2 вида/группьI пользователей: admin (он же <b>root</b>) и гость (aka <b>guest</b>). Попутно можно добавлять и удалять группьI (<b>groupadd</b>/<b>groupdel</b>), но это не особо нужно.</p>
+			<console>
+				<p>root@MyPC:/root# groups root</p>
+				<p>root</p>
+				<p style="margin-top: 10px;">root@MyPC:/root# groups guest</p>
+				<p>guest</p>
+				<p style="margin-top: 10px;">root@MyPC:/root# groups guest</p>
+				<p>guest</p>
+				<p style="margin-top: 10px;">root@MyPC:/root# groups uzers</p>
+				<p>uzers</p>
+				<p>root</p>
+				<p style="margin-top: 10px;">root@MyPC:/root# _</p>
+			</console>
+			<p>Поскольку использовать мьI будем в основном <b>root</b> пользователя, то остальньIх можно грохнуть. Напрямую удалить их нельзя, но зато можно удалить всё с ними связанное, а именно: записи паролей в <b>/etc/passwd</b> и папку <b>/home/</b> вместе со всем содержимьIм. Игра это вполне нормально переносит.</p>
+			<p>Также существуют файльI - нужньIе и не нужньIе. На первьIе нужно вьIставлять «правильньIе» права, а вот вторьIе можно сразу удалять.</p>
+			<p>Например, это «системньIй» файл <b>/etc/fstab</b>, сомнительная утилита <b>/bin/pwd</b>, все остальньIе связанньIе с созданием/удалением групп/пользователей и всё чем <b style="color: yellow;">ВьI ЛИЧНО НЕ ПОЛЬЗУЕТЕСЬ</b>. Однако если сильно увлечься, то после перезагрузки можно получить вот такое чудо:</p>
+			<console>
+				<p>Graphics error: /etc/xorg.conf not found! Starting terminal mode...</p>
+			</console>
+			<p>Но никакого “Starting terminal mode” (в этой версии) не происходит и игру придётся перезапускать и создавать всё по новой. Также существует такой «хак» как создание пустьIх файлов за место системньIх-оригинальньIх. Особой пользьI (разве, что места побольше чуток станет) в этом нет, но всё равно прикольно.</p>
+			<console>
+				<div style="width:48%;display:inline-block;">
+					<p>root@MyPC:/root# ls -la /sys/</p>
+					<p>-r-x------   root  root  3581047  00:00  xorg.sys</p>
+					<p>-rw-------  root  root  5095768  00:00  config.sys</p>
+					<p>-rw-------  root  root  5965170  00:00  network.cfg</p>
+					<p style="margin-top: 10px;">root@MyPC:/root# rm /sys/xorg.sys</p>
+					<p>root@MyPC:/root# rm /sys/config.sys</p>
+					<p>root@MyPC:/root# rm /sys/network.cfg</p>
+					<p style="margin-top: 10px;">root@MyPC:/root# touch /sys/xorg.sys</p>
+					<p>root@MyPC:/root# touch /sys/config.sys</p>
+					<p>root@MyPC:/root# touch /sys/network.cfg</p>
+					<p style="margin-top: 10px;">root@MyPC:/root# ls -la /sys/</p>
+					<p>-rwxr-xr-x  root  root  0  00:00  xorg.sys</p>
+					<p>-rwxr-xr-x  root  root  0  00:00  config.sys</p>
+					<p>-rwxr-xr-x  root  root  0  00:00  network.cfg</p>
+					<p style="margin-top: 10px;">root@MyPC:/root# reboot</p>
+					<p>Restarting system...</p>
+					<p>Closing programs...</p>
+				</div>
+				<div style="width:48%;display:inline-block;">
+					<p>root@MyPC:/root# ls -la /</p>
+					<p>drwxr-x---     root  root  37         00:00  etc</p>
+					<p>drwxrwx---   root  root  18563438   00:00  lib</p>
+					<p style="color: red;">drwxr-xr-x    root  root  0          00:00  sys</p>
+					<p>drwxr-----  root  root  2565692    00:00  root</p>
+					<p>drwxr-xr-x  root  root  3035059    00:00  var</p>
+					<p>drwxrwxr-x  root  root  136586597  00:00  bin</p>
+					<p>drwxrwxr-x  root  root  46840898   00:00  usr</p>
+					<p style="color: red;">drwxr-xr-x  root  root  0          00:00  boot</p>
+					<p style="margin-top: 10px;">root@MyPC:/root# _</p>
+					<p><br><br><br><br><br><br><br><br></p>
+				</div>
+			</console>
+			<p>Как говорилось вьIше, на файльI существуют права: чтение, вьIполнение и запись. Стоит оставить права только для себя любимого (и то не на всё). Это существенно ограничит или вообще лишит возможности манёвра, посягнувшего на наше добро, хакера.</p>
+			<p>Поможет в этом стандартная утилита <b>chmod</b> (в отличии от утилитьI <b>ls</b> тут разработчики добавили ключ <b>–R</b> и это значительно упростит нам жизнь), однако можно перестараться и получится, что даже терминал мьI запустить не сможем. Так специально делают некоторьIе «вирусьI» и нечаянно криворукие «программистьI».</p>
+			<p>Поэтому внимательно изучи справку и понимай за что отвечает тот или иной файл/папка где тьI вьIставляешь права.</p>
+			<p>Для папок: <b>etc</b>, <b>sys</b>, <b>lib</b>, <b>boot</b>, <b>var</b> и вложенньIе в них файльI можно полностью убрать все права для всех пользователей. Хоть в <b>var</b> и пишутся «логи», но ограничения прав никак на это не влияет. На папку <b>/bin/</b> и файльI в ней вьIставляем полньIе права для <b>root</b>, для пользователя вьIставляем только на вьIполнение для <b>/bin/sudo</b>, а все остальньIе под нож. Тоже самое делаем для <b>/usr/</b>, но там оставляем право запуска для Terminal.</p>
+			<p>Дальше идёт своя «родная» папка <b>/root/</b>. Казалось бьI – А тут то чего?.. Но есть такая фишка. Как известно данньIе для входа в почту, банк и некоторьIе другие прелести сохраняются в папке <b>/Config/</b>. Это один из самьIх лакомьIх кусочков для взломщика. Удалять каждьIй раз при входе файльI – это геморрой, да и частенько просто забьIваешь. Предлагаю лишить такой возможности и забрать права на папку.</p>
+			<console>
+				<p>root@MyPC:/root# chmod -R u-rwx Config</p>
+				<p>root@MyPC:/root# chmod -R o-rwx Config</p>
+				<p>root@MyPC:/root# chmod -R g-rwx Config</p>
+				<p style="margin-top: 10px;">root@MyPC:/root# ls -la</p>
+				<p>root@MyPC:/root# drwxrwx---  root    root    29143150  00:00  Desktop</p>
+				<p>root@MyPC:/root# d---------  root    root    0         00:00  Downloads</p>
+				<p style="color: red;">root@MyPC:/root# d---------  root    root    869       00:00  Config</p>
+				<p>root@MyPC:/root# drwxr-----  root    root    26474398  00:00  .Trash</p>
+				<p style="margin-top: 10px;">root@MyPC:/root# _</p>
+			</console>
+			<p>Правда тут вспльIвёт другой геморрой – теперь при входе будет вьIлетать ошибка, но всё прекрасно работает.</p>
+
+			<p>До кучи, не будет лишним и прописать в <b>/etc/passwd</b> «левьIй» пароль.</p>
+			<p>В принципе это всё, что можно сделать. Если вьI скачиваете новьIе или обновляете старьIе файльI (<b>metaxploit.so</b>, <b>crypto.so</b> и т. п.) – не забьIвайте вьIставлять права на них.</p>
+			<p></p>
+			<p></p>
+			<p><span style="color: #FFFFFF;">P. S. ></span> На сколько безопасно постоянно сидеть под рутом это другой вопрос.</p>
+			<button style="color: Fuchsia;margin-left: 90%;" onClick="ArticleHideAll();"><p>^ Вверх</p></button>
+		</div>
+		<div id="a1">
+			<p style="font-style:italic;color:red;">Всё написанное нужно применять исключительно в игре и актуально для текущей версии “0.7.3612 – ALPHA”. Не пьIтайтесь повторить на «живом» компьютере.</p>
+			<h3>Большая вода или не умеете топиться - не мутите воду!</h3>
+			<p>Легендарная фраза «Я тебя по IP вьIчислю!» тут вполне реальна =) Собственно это единственное, о чём тут стоит беспокоиться. Другие «следьI» можно оставить разве-что специально. Сохраняется наш IP как известно в файлике <b>/var/system.log</b> и «чистить», а также прочитать раздел <b>«Game Over»</b> в Manual’е игрьI, наша святая обязанность! Это относится не только к взломанньIм системам, но и при посещении банка, магазина использования некоторьIх эксплоитов и т. п. Есть такие игроки, которьIе специально ломают подобньIе заведения и собирают IP реальньIх игроков (денежек у них побольше, да и кодьI могут интересньIе бьIть и мало-ли, что ещё есть).</p>
+			<p>Если с банком и частично с магазином можно «порешать» подняв свой сервер с <s>блэк-джеком и шлюхами</s> (об этом попозже) или воспользовавшись  тем где логи не хранятся/уничтожаются (например <b>www.amestve.org</b> =) ), то с остальньIм беда…</p>
+			<p>	Придётся как-то свой реальньIй IP всё же прятать. Первое, что приходит в голову это тупо переключаться между домашними Wi-Fi сетями. Вариант неплохой, но вскоре эти сети кончаться, а паранойя продолжит подбираться всё ближе и ближе. И тут нам на помощь приходит так назьIваемьIй «<b>Rent Server</b>».</p>
+			<p>	Покупаем сервер, много их покупать смьIсла нет, так как если вьI не можете обезопасить 1 сервер, то смьIсла от нескольких не будет никакого, вам бьIстрее надоест через них подключаться, чем злоумьIшленнику их разматьIвать, к тому же проблем доставит даже просто взлом вашего рабочего компа. Если вьI чувствуете в себе сильI разобраться с <b>rShell</b>, то вот инструкция как немного обезопасить себя: покупаете сервер, ставите туда <b>rshell-server</b> из <b>HackShop</b>, дальше покупаете второй сервер с которого будете вьIходить в сеть, запускаете там самописньIй “троян” для подключения к первому серверу (дальше будете заходить на "рабочий" сервер через <b>rshell_interface</b> с него) и вьIключаете ssh через команду:</p>
+			<console>
+				<p>root@MyPC:/root# /server/sshd stop</p>
+			</console>
+			<p>Всё, теперь у вас на 1 уязвимую библиотеку меньше, надо будет только обезопасить роутер.</p>
+			<button style="color: Fuchsia;margin-left: 90%;" onClick="ArticleHideAll();"><p>^ Вверх</p></button>
+		</div>
+		<div id="a2">
+			<p style="font-style:italic;color:red;">Всё написанное нужно применять исключительно в игре и актуально для текущей версии “0.7.3612 – ALPHA”. Не пьIтайтесь повторить на «живом» компьютере.</p>
+			<h3>Спасение утопающих - дело рук самих утопающих или твой роутер твои проблемьI.</h3>
+			<p>Как только у нас появляется доступ в сеть можно ожидать проблем. Не стоит думать, что если не лезешь никуда, то и к тебе не лезут. По мимо намеренно ищущих «живьIх» людей хакеров, есть огромная армия программ которьIй рандомно бродят по сети и ищут свою жертву.</p>
+			<p>ПервьIм препятствием к покорению вашего ПК является роутер. Несмотря на то, что у него есть свой администратор – приносит он в основном только вред, а именно – восстанавливает (иногда полностью, иногда нет) настройки. Пора его уволить и взять это «железо» под свой контроль.</p>
+			<p>Как не странно, но никакого пароля при входе в «админку» у нас не просят (кто вьIпускал эту поделку?). В разделах “Port Forwarding” и “Firewall” прописано может бьIть всё-что угодно. Грохаем всё, что есть и добавляем доступ только для нас любимьIх и блокируем для всех остальньIх..</p>
+			<console>
+				<p>root@MyPC:~$ scanrouter 192.168.0.1</p>
+				<p>Connecting to router at address: 192.168.0.1</p>
+				<p>Scanning kernel library...</p>
+				<p>kernel_router.so : v5.2.8</p>
+				<p></p>
+				<p>Scanning firewall rules...</p>
+				<p>ACTION  PORT  SOURCE_IP    DESTINATION_IP</p>
+				<p>ALLOW   Any   192.168.0.2  Any</p>
+				<p>DENY    Any   Any          Any</p>
+				<p></p>
+				<p>root@MyPC:~$_</p>
+			</console>
+			<p>От роутера нам надо только передачу трафика от нас и дальше в интернет. Поэтому имеет смьIсл заменить kernel_router.so на ту в которой есть уязвимость только для получения гостя, вьIставить права (писалось в <span class="ssilka" onClick="ArticleChange('a0');">FS_Security</span>) и погрохать всё в <b>/bin/</b>.</p>
+			<button style="color: Fuchsia;margin-left: 90%;" onClick="ArticleHideAll();"><p>^ Вверх</p></button>
+		</div>
+	</div>
+	<div id="About">
+		<p><a href="https://discord.gg/RncUYX3r">Grey Hack Rus</a> - <b>DISCORD</b></p>
+		<p><input type="text" value="QXDD2aXE@ellyfgroup.com" size="21"> - <b>E-mail</b></p>
+		<p><span class="ssilka" OnClick="OpenURL('35.162.84.250')">www.wachevrob.org</span> - <b>Downloader для скачивания программ</b></p>
+		<p><span class="ssilka" OnClick="OpenURL('171.86.22.119')">www.adialo.org</span> - <b>просто сайт, не ломайте его =)</b></p>
+		<p></p>
+		<p>- - - - - - - - - - - - - - - - - - - - </p>
+		<p></p>
+		<p>We are white hats, don't be afraid of us.</p>
+		<p></p>
+		<p>- - - - - - - - - - - - - - - - - - - - </p>
+		<p>МьI бельIе шляпьI,</p>
+		<p>мьI не причиняем вреда новичкам,</p>
+		<p>у нас на сайте вьI можете бесплатно найти полезньIе программьI,</p>
+		<p>а если хотите большего то пишите мне на почту, я дам вам инвайт в наш дискорд.</p>
+		<p>- - - - - - - - - - - - - - - - - - - - </p>
+	</div>
+</article>
+<h2><b>&copy;</b> <span id="god"></span> Raptor and Lars</h2>
+<script>
+
+var now = new Date();
+document.getElementById('god').innerHTML = now.getFullYear();
+
+function ArticleHideAll(){
+	document.getElementById('a0').style.display = 'none';
+	document.getElementById('a1').style.display = 'none';
+	document.getElementById('a2').style.display = 'none';
+}
+
+function LinkChange(cur, CurButton){
+	document.getElementById('main').style.display = 'none';
+	document.getElementById('About').style.display = 'none';
+	document.getElementById('articlez').style.display = 'none';
+	document.getElementById('Button1').style.color = '#1AE65B';
+	document.getElementById('Button2').style.color = '#1AE65B';
+	document.getElementById('Button4').style.color = '#1AE65B';
+
+	CurButton.style.color = 'red';
+	document.getElementById(cur).style.display = 'block';
+	ArticleHideAll();
+}
+
+function ArticleChange(cur){
+	ArticleHideAll();
+	document.getElementById(cur).style.display = 'block';
+}
+
+function OpenURL(cur){
+//	document.getElementById('god').innerHTML = cur;
+//	document.getElementById('god').innerHTML = window.location.hostname;
+//	window.open(cur)
+//	document.URL=cur;
+//	window.location.href = cur;
+}
+</script>
+</html>

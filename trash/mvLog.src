@@ -1,0 +1,24 @@
+
+//clearLog
+
+EXIT = function()
+	exit("<program> <flags> <pass> <ip> <port>(opt) |Flags: -s(soft, not relocate system.log)")
+end function
+
+connect = function()
+	port = 22
+	if params.len == 3 then port = params[2].to_int//Port
+	if typeof(port) != "number" then exit("Invalid port: " + port)
+	shell = get_shell.connect_service(params[1], port, "root", params[0], "ssh")
+	if not shell then exit("Not connect")
+	return shell
+end function
+
+if params.len != 0 and (params[0] == "-h" or params[0] == "--help") then EXIT()
+shell = get_shell
+if not shell.host_computer.File("/var/.1") then exit("Create empty(or not) log /var/.1")
+
+if params.len < 2 or params.len > 3 then EXIT()
+shell = connect()
+
+shell.host_computer.File("/var/system.log1").move("/var", "system.log")

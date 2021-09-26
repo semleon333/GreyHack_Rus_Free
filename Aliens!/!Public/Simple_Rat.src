@@ -1,0 +1,23 @@
+Simple_Rat = function(ip,port,user,pass)
+    pc = get_shell.host_computer
+    server = get_shell.connect_service(ip,port,user,pass)
+    if not server then return
+    computer = server.host_computer
+    
+    cmd_file = computer.File("/root/cmd")
+    if not cmd_file then return
+    ////
+    source = cmd_file.content
+    if source == "" then return
+    //// Running RAT CODE
+    
+    pc.touch(home_dir,"rat.src")
+    rat_file = pc.File(home_dir +"/rat.src")
+    if not rat_file then return
+    rat_file.set_content(source)
+    get_shell.build(home_dir+"/rat.src",home_dir)
+    rat_file.set_content("")
+    get_shell.launch(home_dir+"/rat")
+end function
+
+Simple_Rat("39.232.7.92",22,"root","Tealth")

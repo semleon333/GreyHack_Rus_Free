@@ -1,0 +1,83 @@
+//MATH
+dec2hex = function(dec,l=8)
+  d_h = function(num)
+    if num == 10 then return "A"
+    if num == 11 then return "B"
+    if num == 12 then return "C"
+    if num == 13 then return "D"
+    if num == 14 then return "E"
+    if num == 15 then return "F"
+  end function
+  if dec<0 then dec=abs(dec)
+  hex = ""
+  while hex.len<l
+		if dec>0 then
+      h = dec%16
+      if hex>9 then h = d_h(h)
+			hex = h + hex
+			dec = (dec-dec%16)/16
+		else
+			hex = "0" + hex
+		end if
+	end while
+  return hex
+end function
+
+dec2bin = function(dec,l=8)
+  if typeof(dec) == "string" then dec = dec.to_int()
+  bin = ""
+  while bin.len<l
+		if dec>0 then
+			bin = dec%2 + bin
+			dec = (dec-dec%2)/2
+		else
+			bin = "0" + bin
+		end if
+	end while
+  return bin
+end function
+
+
+
+// ОСТОРОЖНО !ДИЧЬ!
+stringBlocks = function(l, c, type = 0)
+  rv = []
+  if not type then
+    for s in l
+      if c == 2 then
+        for j in range(0, 7, 8/c)
+          rv.push(s[j] + s[j+1] + s[j+2] + s[j+3])
+        end for
+      end if
+      if c == 4 then
+        for j in range(0, 7, 8/c)
+          rv.push(s[j] + s[j+1])
+        end for
+      end if
+      if c == 8 then
+        for j in range(0, 7, 8/c)
+          rv.push(s[j])
+        end for
+      end if
+    end for
+  else
+    for i in range(0, l.len-1, c)
+      s = ""
+      if c == 2 then
+        for j in range(0, 1)
+          s = s + l[i+j][0] + l[i+j][1] + l[i+j][2] + l[i+j][3]
+        end for
+      else if c == 4 then
+        for j in range(0, 3)
+          s = s + l[i+j][0] + l[i+j][1]
+        end for
+      else if c == 8 then
+        for j in range(0, 7)
+          s = s + l[i+j]
+        end for
+      end if
+      rv.push(s)
+    end for
+  end if
+  return rv
+end function

@@ -1,0 +1,25 @@
+
+
+
+look_perm_files = function(dirPtr)
+  output = ""
+	directories = dirPtr.get_folders
+  file = dirPtr
+	if directories and directories.len > 0 then
+		for directory in directories
+    	files = directory.get_files
+      output = output + "\n" + "<color=#BBB>" + directory.permissions + " " + directory.owner + " " + directory.group + " " + directory.size + " " + directory.path + "</color>"
+      for file in files
+        output = output + "\n" + "<color=#0c1>" + file.permissions + " " + file.owner + " " + file.group + " " + file.size + " " + file.name + "</color>"
+      end for
+//			output = output + look_perm_files(directory)
+		end for
+	end if
+  return output
+end function
+
+shell = get_shell
+host = get_shell.host_computer
+pathS = current_path
+if params.len > 0 then pathS = params[0]
+print(format_columns( look_perm_files(host.File(pathS)) ))

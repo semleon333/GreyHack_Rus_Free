@@ -1,0 +1,125 @@
+Operation=function(Op,Pass)
+	out = []
+	i = 0
+	for p in Pass
+		if i >= Pass.len-1 then
+			out.push(bitwise(Op,p,Pass[0]))
+		else
+			out.push(bitwise(Op,p,Pass[i+1]))
+		end if
+		i = i + 1
+	end for
+	return out
+end function
+IsEven=function(num)
+	if num % 2 == 0 then return true
+	return false
+end function
+MessIt=function(Password)
+	Pass = []
+	for c in Password
+		Pass.push(code(c))
+	end for
+	Op = Operation("<<",Pass)
+	Op = Operation("^",Op)
+	Op = Operation("&",Op)
+	Op = Operation("|",Op)
+	Raw_1 = []
+	Raw_2 = []
+	i = 0
+	for p in Op
+		if IsEven(i) then
+			Raw_1.push(p)
+		else
+			Raw_2.push(p)
+		end if
+		i = i + 1
+	end for
+	if Raw_2.len < Raw_1.len then Raw_2.push(1111111)
+
+	BitWiZe = []
+	for r in range(0,Raw_1.len-1)
+		BitWiZe.push(bitwise("^",Raw_1[r],Raw_2[r]))
+	end for
+	return BitWiZe.join("")
+end function
+Encode = function(password)
+	return MessIt(password)
+end function
+print(Encode(params[0]))
+
+
+print(bitwise("<<",params[0].to_int,params[1].to_int))
+
+
+//dbg
+Operation=function(Op,Pass)
+	out = []
+	i = 0
+	print()
+	for p in Pass
+		if i >= Pass.len-1 then
+			print(i + "	" + p + "	" + Op + "	" + Pass[0])
+			out.push(bitwise(Op,p,Pass[0]))
+		else
+			print(i + "	" + p + "	" + Op + "	" + Pass[i+1])
+			out.push(bitwise(Op,p,Pass[i+1]))
+		end if
+		i = i + 1
+	end for
+	return out
+end function
+IsEven=function(num)
+	if num % 2 == 0 then return true
+	return false
+end function
+MessIt=function(Password)
+	Pass = []
+	for c in Password
+		Pass.push(code(c))
+	end for
+	print(Pass)
+	print()
+	print("Op:")
+	Op = Operation("<<",Pass)
+	print("<<")
+	print(Op)
+	Op = Operation("^",Op)
+	print("^")
+	print(Op)
+	Op = Operation("&",Op)
+	print("&")
+	print(Op)
+	Op = Operation("|",Op)
+	print("|")
+	print(Op)
+	Raw_1 = []
+	Raw_2 = []
+	i = 0
+	for p in Op
+		if IsEven(i) then
+			Raw_1.push(p)
+		else
+			Raw_2.push(p)
+		end if
+		i = i + 1
+	end for
+	if Raw_2.len < Raw_1.len then Raw_2.push(1111111)
+	print()
+	print("Raw1")
+  print(Raw_1)
+	print("Raw2")
+  print(Raw_2)
+	BitWiZe = []
+	for r in range(0,Raw_1.len-1)
+		BitWiZe.push(bitwise("^",Raw_1[r],Raw_2[r]))
+	end for
+	print()
+	print("BitWiZe Raw_1 ^ Raw_2")
+  print(BitWiZe)
+	return BitWiZe.join("")
+end function
+Encode = function(password)
+	return MessIt(password)
+end function
+print(Encode(params[0]))

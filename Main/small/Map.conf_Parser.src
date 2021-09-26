@@ -1,0 +1,15 @@
+//парсит Map.conf, в данной версии выводит на экран
+fileCont = get_shell.host_computer.File("/root/Config/Map.conf").get_content()[14:-27].replace(char(34),"")
+for i in range(0,fileCont.len)
+fileCont = fileCont.remove("user:")
+fileCont = fileCont.remove("ip:")
+fileCont = fileCont.remove("password:")
+end for
+fileCont = fileCont.split("},{")
+for i in fileCont
+	i = i.split(",")
+	user = i[0]
+	ip = i[1]
+	password = i[2]
+	print(user + " " + ip + " " + password)
+end for

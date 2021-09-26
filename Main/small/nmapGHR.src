@@ -1,0 +1,19 @@
+//чуть улучшенный nmap
+colFFF = "<color=#fff>"
+ip = params[0].to_int
+router = get_router(ip)
+ports = router.used_ports
+s = ""
+f_rules = router.firewall_rules
+if f_rules then
+	for rule in f_rules
+		print(rule)
+	end for
+end if
+print(colFFF+"kernel_router.so: v "+router.kernel_version)
+for port in ports
+	isClosed = "open"
+	if is_closed(port) then isClosed = "clsd"
+	s = s + colFFF + port_number(port) + " " + isClosed + " " + router.port_info(port) + " " + get_lan_ip(port) + char(10)
+end for
+print(format_columns(s[0:-1]))

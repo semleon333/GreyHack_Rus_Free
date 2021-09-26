@@ -1,0 +1,406 @@
+//math
+math = {}
+math.bitl = function(a, b)
+    // for i in range(0, b)
+    //     a = slice(a, 1) + "0"
+    // end for
+    a = a * 2 ^ b
+    return a
+end function
+math.bitr = function(a, b)
+    // for i in range(0, b)
+    //     a = "0" + slice(a, 0, -1)
+    // end for
+    a = a / 2 ^ b
+    return a
+end function
+math.d2b = function(a)
+    result = []
+    while a > 1
+        result.push(a % 2)
+        a = floor(a / 2)
+    end while
+    result.push(a).reverse
+    return result.join("")
+end function
+math.b2d = function(a)
+    result = 0
+    result = 0
+    a = a.values
+    a.reverse
+    for i in range(0, a.len - 1)
+        result = result + a[i].to_int * 2 ^ i
+    end for
+    return result
+end function
+math.bin_prepare = function(a, b)
+    a = math.d2b(a)
+    b = math.d2b(b)
+    d = a.len - b.len
+    if d < 0 then
+        for i in range(1, 0 - d)
+            a = "0" + a
+        end for
+    else
+        if d > 0 then
+            for i in range(1, d)
+                b = "0" + b
+            end for
+        end if
+    end if
+    return [a, b]
+end function
+math.xor =  function(a, b)
+    a = str(a).to_int
+    b = str(b).to_int
+    if typeof(a) != "number" then
+        if typeof(b) != "number" then return 0
+        return b
+    else
+        if typeof(b) != "number" then return a
+    end if
+    p = math.bin_prepare(a, b)
+    a = p[0]
+    b = p[1]
+    result = []
+    for i in range(0, a.len - 1)
+        result.push(a[i] != b[i])
+    end for
+    return math.b2d(result.join(""))
+end function
+math.band = function(a, b)
+    p = math.bin_prepare(a, b)
+    a = p[0]
+    b = p[1]
+    result = []
+    for i in range(0, a.len - 1)
+        r = a[i].val + b[i].val - 1
+        if r == -1 then r = 0
+        result.push(r)
+    end for
+    return math.b2d(result.join(""))
+end function
+math.bor = function(a, b)
+    p = math.bin_prepare(a, b)
+    a = p[0]
+    b = p[1]
+    result = []
+    for i in range(0, a.len - 1)
+        r = a[i].val + b[i].val
+        if r > 0 then r = 1
+        result.push(r)
+    end for
+    return math.b2d(result.join(""))
+end function
+//--------------------------------------------------------------------------
+//SRand
+SRand = {}
+SRand.secure = {}
+SRand.seeded = {}
+SRand.rng_psize = 256
+SRand.rng_state = null
+SRand.rng_pool = null
+SRand.rng_pptr = null
+SRand.rng_seed_time = function()
+    date = current_date.replace("-", "").replace(":", "").replace(" ", "")
+    SRand.rng_seed_int(date.val)
+end function
+SRand.rng_get_bytes = function()
+    if SRand.rng_state == null then
+        SRand.rng_seed_time()
+        SRand.rng_state = prng_newstate();
+        SRand.rng_state.init(SRand.rng_pool)
+        // for SRand.rng_pptr in range(0, SRand.rng_pool.len - 1)
+        //     SRand.rng_pool[SRand.rng_pptr] = 0
+        // end for
+        SRand.rng_pptr = 0
+    end if
+end function
+SRand.secure.nextBytes = function(length)
+    result = []
+    for i in range(0, length - 1)
+        result[i] = rng_get_bytes()
+    end for
+    return result
+end function
+SRand.seeded.nextBytes = function(length)
+    result = []
+    for i in range(0, length - 1)
+        result.push(floor(rnd() * 256))
+    end for
+    return result
+end function
+//-------------------------------------------------------------------------
+//aes
+aes = {}
+aes.Sbox = [99, 124, 119, 123, 242, 107, 111, 197, 48, 1, 103, 43, 254, 215, 171, 118, 202, 130, 201, 125, 250, 89, 71, 240, 173, 212, 162, 175, 156, 164, 114, 192, 183, 253, 147, 38, 54, 63, 247, 204, 52, 165, 229, 241, 113, 216, 49, 21, 4, 199, 35, 195, 24, 150, 5, 154, 7, 18, 128, 226, 235, 39, 178, 117, 9, 131, 44, 26, 27, 110, 90, 160, 82, 59, 214, 179, 41, 227, 47, 132, 83, 209, 0, 237, 32, 252, 177, 91, 106, 203, 190, 57, 74, 76, 88, 207, 208, 239, 170, 251, 67, 77, 51, 133, 69, 249, 2, 127, 80, 60, 159, 168, 81, 163, 64, 143, 146, 157, 56, 245, 188, 182, 218, 33, 16, 255, 243, 210, 205, 12, 19, 236, 95, 151, 68, 23, 196, 167, 126, 61, 100, 93, 25, 115, 96, 129, 79, 220, 34, 42, 144, 136, 70, 238, 184, 20, 222, 94, 11, 219, 224, 50, 58, 10, 73, 6, 36, 92, 194, 211, 172, 98, 145, 149, 228, 121, 231, 200, 55, 109, 141, 213, 78, 169, 108, 86, 244, 234, 101, 122, 174, 8, 186, 120, 37, 46, 28, 166, 180, 198, 232, 221, 116, 31, 75, 189, 139, 138, 112, 62, 181, 102, 72, 3, 246, 14, 97, 53, 87, 185, 134, 193, 29, 158, 225, 248, 152, 17, 105, 217, 142, 148, 155, 30, 135, 233, 206, 85, 40, 223, 140, 161, 137, 13, 191, 230, 66, 104, 65, 153, 45, 15, 176, 84, 187, 22]
+aes.ShiftRowTab = [0, 5, 10, 15, 4, 9, 14, 3, 8, 13, 2, 7, 12, 1, 6, 11]
+aes.Init = function()
+    aes.Sbox_Inv = []
+    for i in range(0, 255)
+        aes.Sbox_Inv.push(0)
+    end for
+    for i in aes.Sbox
+        aes.Sbox_Inv[i] = aes.Sbox.indexOf(i)
+    end for
+    aes.ShiftRowTab_Inv = []
+    for i in range(0, 15)
+        aes.ShiftRowTab_Inv.push(0)
+    end for
+    for i in aes.ShiftRowTab
+        aes.ShiftRowTab_Inv[i] =  aes.ShiftRowTab.indexOf(i)
+    end for
+    aes.xtime = []
+    for i in range(0, 255)
+        aes.xtime.push(0)
+    end for
+    for i in range(0, 127)
+        aes.xtime[i] = math.bitl(i, 1)
+        aes.xtime[128 + i] = math.xor(aes.xtime[i], 27)
+    end for
+end function
+aes.checkItem = function(arr, elem)
+    if typeof(elem) == "string" then return null
+    if arr.hasIndex(elem) then return arr[elem]
+    return null
+end function
+aes.ExpandKey = function(key)
+    kl = key.len
+    Rcon = 1
+    ks = 0
+    if kl == 16 then ks = 16 * (10 + 1)
+    if kl == 24 then ks = 16 * (12 + 1)
+    if kl == 32 then ks = 16 * (14 + 1)
+    if ks == 0 then return("ERROR: key length must be 16, 24 or 32 symbols")
+    for i in range(kl, ks - 1, 4)
+        temp = slice(key, i - 4, i)
+        if i % kl == 0 then
+            temp = [math.xor(aes.checkItem(aes.Sbox, temp[1]), Rcon), aes.checkItem(aes.Sbox, temp[2]), aes.checkItem(aes.Sbox, temp[3]), aes.checkItem(aes.Sbox, temp[0])]
+            Rcon = math.bitl(Rcon, 1)
+            if Rcon >= 256 then
+                Rcon = math.xor(Rcon, 283)
+            end if
+    else
+            if (kl > 24) and (i % kl == 16) then
+                temp = [aes.checkItem(aes.Sbox, temp[0]), aes.checkItem(aes.Sbox, temp[1]), aes.checkItem(aes.Sbox, temp[2]), aes.checkItem(aes.Sbox, temp[3])]
+            end if
+        end if
+        for j in range(0, 3)
+            key.push(math.xor(key[i + j - kl], temp[j]))
+        end for
+end for
+    return key
+end function
+aes.Encrypt = function(block, key)
+    l = key.len
+    block = aes.AddRoundKey(block, slice(key, 0, 16))
+    for i in range(16, l - 17, 16)
+        block = aes.SubBytes(block, aes.Sbox)
+        block = aes.ShiftRows(block, aes.ShiftRowTab)
+        block = aes.MixColumns(block)
+        block = aes.AddRoundKey(block, slice(key, i, i + 16))
+    end for
+    block = aes.SubBytes(block, aes.Sbox)
+    block = aes.ShiftRows(block, aes.ShiftRowTab)
+    block = aes.AddRoundKey(block, slice(key, i, l))
+    return block
+end function
+aes.Decrypt = function(block, key)
+    l = key.len
+    block = aes.AddRoundKey(block, slice(key, l - 16, l))
+    block = aes.ShiftRows(block, aes.ShiftRowTab_Inv)
+    block = aes.SubBytes(block, aes.Sbox_Inv)
+    i = l - 32
+    while i >= 16
+        block = aes.AddRoundKey(block, slice(key, i, i + 16))
+        block = aes.MixColumns_Inv(block);
+        block = aes.ShiftRows(block, aes.ShiftRowTab_Inv)
+        block = aes.SubBytes(block, aes.Sbox_Inv)
+        i = i - 16
+    end while
+    return block
+end function
+aes.SubBytes = function(state, sbox)
+    for i in range(0, 15)
+        state[i] = sbox[state[i]]
+    end for
+    return state
+end function
+aes.AddRoundKey = function(state, rkey)
+    for i in range(0, 15)
+        state[i] = math.xor(state[i], rkey[i])
+    end for
+    return state
+end function
+aes.ShiftRows = function(state, shifttab)
+    h = state[0:]
+    for i in range(0, 15)
+        state[i] = h[shifttab[i]]
+    end for
+    return state
+end function
+aes.MixColumns = function(state)
+    for i in range(0, 15, 4)
+        s0 = state[i + 0]
+        s1 = state[i + 1]
+        s2 = state[i + 2]
+        s3 = state[i + 3]
+        h = math.xor(math.xor(math.xor(s0, s1), s2), s3)
+        state[i + 0] = math.xor(state[i + 0], math.xor(h, aes.xtime[math.xor(s0, s1)]))
+        state[i + 1] = math.xor(state[i + 0], math.xor(h, aes.xtime[math.xor(s1, s2)]))
+        state[i + 2] = math.xor(state[i + 0], math.xor(h, aes.xtime[math.xor(s2, s3)]))
+        state[i + 3] = math.xor(state[i + 0], math.xor(h, aes.xtime[math.xor(s3, s0)]))
+    end for
+    return state
+end function
+aes.MixColumns_Inv = function(state)
+    for i in range(0, 15, 4)
+        s0 = state[i + 0]
+        s1 = state[i + 1]
+        s2 = state[i + 2]
+        s3 = state[i + 3]
+        h = math.xor(math.xor(math.xor(s0, s1), s2), s3)
+        xh = aes.xtime[h]
+        h1 = math.xor(aes.xtime[aes.xtime[math.xor(math.xor(xh, s0), s2)]], h)
+        h2 = math.xor(aes.xtime[aes.xtime[math.xor(math.xor(xh, s1), s3)]], h)
+        state[i + 0] = math.xor(state[i + 0], math.xor(h1, aes.xtime[math.xor(s0, s1)]))
+        state[i + 1] = math.xor(state[i + 0], math.xor(h2, aes.xtime[math.xor(s1, s2)]))
+        state[i + 2] = math.xor(state[i + 0], math.xor(h1, aes.xtime[math.xor(s2, s3)]))
+        state[i + 3] = math.xor(state[i + 0], math.xor(h2, aes.xtime[math.xor(s3, s0)]))
+    end for
+    return state
+end function
+aes.Init()
+//---------------------------------------------------------------------
+//cryptico
+crypt = {}
+crypt.base64Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+crypt.string2bytes = function(string)
+    bytes = []
+    for i in string.values
+        bytes.push(code(i))
+    end for
+    return bytes
+end function
+crypt.pad16 = function(bytes)
+    newBytes = bytes[0:]
+    padding = (16 - (bytes.len % 16)) % 16
+    for i in range(bytes.len, bytes.len + padding - 1)
+        newBytes.push(0)
+    end for
+    return newBytes
+end function
+crypt.blockIV = function()
+    r = new SRand() // TODO: test
+    return r.seeded.nextBytes(16)
+end function
+crypt.blockXOR = function(a, b)
+    xor = []
+    for i in range(0, 15)
+        xor.push(math.xor(a[i], b[i]))
+    end for
+    return xor
+end function
+crypt.bytes2string = function(bytes)
+    string = []
+    for i in range(0, bytes.len - 1)
+        string.push(char(bytes[i]))
+    end for
+    return string.join("")
+end function
+crypt.b256to64 = function(t)
+    r = ""
+    l = 0
+    a = 0
+    c = 0
+    s = 0
+    tl = t.len
+    for n in range(0, tl - 1)
+        c = code(t[n])
+        if s == 0 then
+            r = r + crypt.base64Chars[math.band(math.bitr(c, 2), 63)]
+            a = math.bitl(math.band(c, 3), 4)
+        end if
+        if s == 1 then
+            r = r + crypt.base64Chars[math.bor(a, math.band(math.bitr(c, 4), 15))]
+            a = math.bitl(math.band(c, 15), 2)
+        end if
+        if s == 2 then
+            r = r + crypt.base64Chars[math.bor(a, math.band(math.bitr(c, 6), 3))]
+            l = l + 1
+            r = r + crypt.base64Chars[math.band(c, 63)]
+        end if
+        l = l + 1
+        s = s + 1
+        if s == 3 then s = 0
+    end for
+    if s > 0 then
+        r = r + crypt.base64Chars[a]
+        l = l + 1
+        r = r + "="
+        l = l + 1
+    end if
+    if s == 1 then
+        r = r + "="
+    end if
+    return r
+end function
+crypt.b64to256 = function(t)
+    r = ""
+    s = 0
+    a = 0
+    tl = t.len
+    for n in range(0, tl - 1)
+        c = crypt.base64Chars.indexOf(t[n])
+        if c >= 0 then
+            if s then r = r + char(math.bor(a, math.band(math.bitr(c, 6 - s), 255)))
+            s = math.band(s + 2, 7)
+            a = math.band(math.bitl(c, s), 255)
+        end if
+    end for
+    return r
+end function
+crypt.depad = function(bytes)
+    newBytes = bytes[0:]
+    while newBytes[newBytes.len - 1] == 0
+        newBytes = slice(newBytes, 0, newBytes.len - 1)
+    end while
+    return newBytes
+end function
+crypt.EncryptAESCBC = function(text, key)
+    exkey = aes.ExpandKey(key)
+    blocks = crypt.string2bytes(text)
+    blocks = crypt.pad16(blocks)
+    encryptedBlocks = crypt.blockIV()
+    for i in range(0, blocks.len / 16 - 1)
+        tempBlock = slice(blocks, i * 16, i * 16 + 16)
+        prevBlock = slice(encryptedBlocks, i * 16, i * 16 + 16)
+        tempBlock = crypt.blockXOR(prevBlock, tempBlock)
+        tempBlock = aes.Encrypt(tempBlock, exkey)
+        encryptedBlocks = encryptedBlocks + tempBlock
+    end for
+    cipher = crypt.bytes2string(encryptedBlocks)
+    return crypt.b256to64(cipher)
+end function
+crypt.DecryptAESCBC = function(encryptedText, key)
+    exkey = aes.ExpandKey(key)
+    encryptedText = crypt.b64to256(encryptedText)
+    encryptedBlocks = crypt.string2bytes(encryptedText)
+    decryptedBlocks = []
+    for i in range(1, encryptedBlocks.len / 16)
+        tempBlock = slice(encryptedBlocks, i * 16, i * 16 + 16)
+        prevBlock = slice(encryptedBlocks, (i - 1) * 16, (i - 1) * 16 + 16)
+        tempBlock = aes.Decrypt(tempBlock, exkey)
+        tempBlock = crypt.blockXOR(prevBlock, tempBlock)
+        decryptedBlocks = decryptedBlocks + tempBlock
+    end for
+    decryptedBlocks = crypt.depad(decryptedBlocks)
+    return crypt.bytes2string(decryptedBlocks)
+end function
+//------------------------------------------------------------------------------------------------
+// text = user_input("text> ")
+// key = user_input("key> ")
+key = "test12345678test"
+enc = crypt.EncryptAESCBC("test text by durck", key.values)
+print(enc)
+//["t", "e", "s", "t", "1","2","3","4","5","6","7","8","t", "e", "s", "t"]

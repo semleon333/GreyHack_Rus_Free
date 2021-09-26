@@ -1,0 +1,117 @@
+//шаблон написания небольшой модульной программы на примере ls(с настоящей лс есть расхождения)
+//пояснение к программе
+
+//char aliases
+endl = char(10)
+quote = char(34)
+//color aliases
+colEND = "</color>"
+colFFF = "<color=#fff>"
+colF22 = "<color=#f22>"
+col2F2 = "<color=#2f2>"
+col22F = "<color=#22f>"
+
+//Main.lib
+ERR_PRINT = function(str)
+	print("<color=#FF2222><b> ERROR: </b></color>" + str)
+end function
+ERR_FATAL = function(str)
+	exit("<color=#FF2222><b> ERROR_FATAL: </b></color>" + str)
+end function
+ERR_STRING = function(str)
+	return("<color=#FF2222><b> ERROR: </b></color>" + str)
+end function
+dbg = function(str)//печатает "Debug: str"
+	if flag_dbg then print("<color=#AAA><b>Debug:</b> <color=#FFF>" + str + "</color>")
+end function
+prmExist = function(s)//проверка существования параметра s в globals.params
+end function
+prmTake = function(s)//проверка существования и удаление параметра s в globals.params
+end function
+
+updateСheckF()
+end function
+//
+
+//основная функция в которой находится всё что нужно программе, снаружи только то что необходимо для отдельной работы вне других программ
+//например парсинг параметров и DRM
+//краткая структура,
+//ls основная функция для модульности, что бы если что куда-то ещё вставить,
+//main основная функция уже самой ls
+//другие вложенные функции, которые можно использовать только в этой функции и они непригодны для включения в .lib
+
+ls = function()
+	main = function()
+		sizing = function()
+
+		end function
+		has_perm = function()
+
+		end function
+	end function
+	lenParam = function()
+
+	end function
+
+
+end function
+
+
+//---Var---//
+shell = get_shell
+host = get_shell.host_computer
+flag_dbg = false
+
+//блок для работы с сервером
+SERVER_LIST = ["<ip>","<pass>","<ip>","<pass>","<ip>","<pass>"]
+
+PROGRAM = {}
+PROGRAM.VERSION_S = "0.0.1"
+PROGRAM.VERSION_L_N = []
+PROGRAM.NAME = "PROGRAMNAME"
+
+SERVER_MAIN_FOLDER_PATH = "/programs/"+PROGRAM.NAME+"/DB/"
+VER_ON_SERV_PATH = "/programs/"+PROGRAM.NAME+"/ver"
+programsStorDirOnServPath = "/programs/"+PROGRAM.NAME+"/"
+NAME_VER = PROGRAM.NAME+" v"+PROGRAM.VERSION_S
+//
+
+
+
+
+//---Init---//
+//help
+if params.len>0 and (params[0]=="--help" or params[0]=="-h") then
+	print(colFFF+"ls [opt: -l, -a, -c (or comb, Ex: -lr -ad)] [opt: path]")
+	print(colFFF+"-c - gen configuration file <username>/Config/ls.conf")
+	print(colFFF+"-l - detailed")
+	print(colFFF+"-a - hidden files")
+	print(colFFF+"Ex: ls -lar Config -d")
+	print(colFFF+"Ex: ls")
+	return
+end if
+//Fast DRM
+if not get_router("IP_YOUR_DRM_SERVER").ping_port(1) then exit("Lars say NO")
+//if prmTake("--dbg") or prmTake("--debug") then flag_dbg = true
+
+flag_1 = false
+flag_2 = false
+flag_3 = false
+//prm pars
+if prmTake("-1") then flag_1 = true
+if prmTake("-2") then flag_2 = true
+if prmTake("-3") then flag_3 = true
+//
+
+//server
+SERVER_SHELL = connChain(SERVER_LIST)
+SERVER_HOST = SERVER_SHELL.host_computer
+updateСheckF()//обновление программы с сервера SERVER_SHELL
+//
+
+//LibX = includeLib("metaxploit.so")
+//LibC = includeLib("crypto.so")
+
+
+//
+ls(get_shell.host_computer)

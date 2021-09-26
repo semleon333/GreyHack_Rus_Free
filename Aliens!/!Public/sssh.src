@@ -1,0 +1,21 @@
+shell = get_shell
+hc = shell.host_computer
+splash = function()
+print(" _____ _____ _____  _    _ ")
+print("/ ____/ ____/ ____ | |  | |")
+print("| (___| (___| (___ | |__| |")
+print("\___ \\___ \\___ \ |  __  |")
+print("____) |___) |___)  | |  | |")
+print("|_____/_____/_____ |_|  |_|")
+
+
+end function
+splash()
+print("SSSH by <color=lime><b><u>OOF</b></u></color>")
+IP = user_input("IP: ", 1)
+user = user_input("User: ", 1)
+pass = user_input("Password: ", 1)
+hide()
+connect = shell.connect_service(IP, user, pass)
+restore()
+connect.start_terminal

@@ -1,0 +1,104 @@
+//спрашивает какой процесс убить в цикле
+//Functions//
+ERROR = function(str)
+	print("<color=#FF2222><b>  ERROR: </b></color>" + str)
+end function
+//new filler
+fill = function(s, ln, side="s+", filler=" ")//строка, длинна, сторона(+s, s+), строка-заполнитель
+	s = str(s)
+	if s.len >= ln then return s
+	filler = filler*ln
+	if side=="s+" then return (s+filler)[:ln]
+	if side=="+s" then return (filler+s)[-ln:]
+end function
+//format string //using fill()
+form = function(list)
+	rv=""
+	for l in list
+		if typeof(l)=="string" then
+			rv=rv+l
+			continue
+		end if
+		p0=l[0]
+		if l.len>1 then
+			p1=l[1]
+		else
+			rv=rv+p0
+			continue
+		end if
+		if l.len>2 then
+			p2=l[2]
+		else
+			rv=rv+fill(p0,p1)
+			continue
+		end if
+		if l.len>3 then
+			p3=l[3]
+		else
+			rv=rv+fill(p0,p1,p2)
+			continue
+		end if
+		rv=rv+fill(p0,p1,p2,p3)
+	end for
+	return rv
+end function
+s_to_list = function(s)
+  s = s.replace(char(10), " ")//del ENTER
+  s = s.split(" ")//split substrings
+  return s
+end function
+get_choice = function(choices, default = -1)
+	c = 0
+	for choice in choices
+		if c == 0 then
+			print("<b>" + choices[0] + "</b>")
+		else
+			selString = "<b>[" + c + "]</b>"
+			print(fill(selString, 12) + choices[c])
+		end if
+		c = c + 1
+	end for
+	if default > -1 then
+		prompt = "[default="+default+"] > "
+	else
+		prompt = "> "
+	end if
+	while 1
+		user_choice = user_input(prompt)
+		if user_choice.len == 0 and default > -1 then return default
+		user_choice = user_choice.to_int
+		if not typeof(user_choice) == "number" or user_choice < 1 or user_choice >= c then
+			ERROR("Not a valid choice")
+			continue
+		end if
+		return user_choice
+	end while
+end function
+
+//Var//
+shell = get_shell
+comp = shell.host_computer
+
+//Init//
+//help
+if params.len>0 and (params[0]=="--help" or params[0]=="-h") then
+	print(colFFF+"KILL")
+	exit(colFFF+"looped killing")
+end if
+//Fast DRM
+if not get_router("IP_YOUR_DRM_SERVER").ping_port(1) then exit("Lars say NO")
+
+// / / MAIN / / //
+while 1
+  clear_screen
+  wait(0.2)
+  choices = []
+  procS = comp.show_procs
+  procList = s_to_list(procS)
+  for i in range(0, procList.len-1, 5)
+    choices.push(procList[i+1] + " " + procList[i+4])
+  end for
+  choice = get_choice(choices, "Exit")
+  if choice == "Exit" then exit()
+  comp.close_program(procList[choice*5+1].to_int)
+end while

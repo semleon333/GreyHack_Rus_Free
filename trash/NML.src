@@ -1,0 +1,27 @@
+c=get_shell.host_computer
+if params.len == 0 then
+	r=get_router
+else
+	r=get_router(params[0])
+end if
+
+if not r or not c.is_network_active then exit("Not connected to the network.")
+
+output = ""
+
+ips = r.devices_lan_ip
+for ip in ips
+	if ip == c.network_gateway then
+		output = output + ip + " " + "<color=#8000ff>GATEWAY</color>"	 + "\n"
+	else if get_router(ip) then
+		output = output + ip + " " + "<color=#42ff42>ROUTER</color>"		 + "\n"
+	else if get_switch(ip) then
+		output = output + ip + " " + "<color=#ff4242>SWITCH</color>"		 + "\n"
+	else if ip == c.lan_ip then
+		output = output + ip + " " + "<color=#4242ff>current</color>"	 + "\n"
+	else
+		output = output + ip + " " + "<color=#424242>COMPUTER</color>" + "\n"
+	end if
+end for
+
+print(format_columns(output))

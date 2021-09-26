@@ -1,0 +1,75 @@
+existParam = function(paramType)//проверка существования параметра paramType в globals.params
+	for param in params
+		if param.lower == paramType.lower then return true
+	end for
+	return false
+end function
+ValidateInput = function(input)
+	if input == "-la" or input == "-l" or input == "-a" then return true
+	return false
+end function
+
+main = function(Dir)
+  output = ""
+  folders = Dir.get_folders
+  files = Dir.get_files
+  for file in folders
+  	is_bin = "dir"
+    color = "<color=#fff>"
+    r = "-"
+    w = "-"
+    x = "-"
+    if file.has_permission("r") then r = "r"
+    if file.has_permission("w") then w = "w"
+    if file.has_permission("x") then x = "x"
+  	if flag_hide or file.indexOf(".") != 0 then
+  		if not flag_details then
+        output = output + "\n" + file.name
+        continue
+      end if
+  		output = output + "\n" +r+w+x+"|"+ color + file.permissions + " " + file.owner + " " + file.group + " " + file.size + " " + is_bin + " " + file.name
+  	end if
+  end for
+  for file in files
+  	is_bin = "txt"
+    color = "<color=#fd0>"
+    //ca6 - папирус
+    //fd0 - золото
+    r = "-"
+    w = "-"
+    x = "-"
+    if file.has_permission("r") then r = "r"
+    if file.has_permission("w") then w = "w"
+    if file.has_permission("x") then x = "x"
+  	if file.is_binary then
+      is_bin = "bin"
+      color = "<color=#bce>"
+    end if
+  	if flag_hide or file.indexOf(".") != 0 then
+  		if not flag_details then
+        output = output + "\n" + file.name
+        continue
+      end if
+  		output = output + "\n" +r+w+x+"|"+ color + file.permissions + " " + file.owner + " " + file.group + " " + file.size + " " + is_bin + " " + file.name
+  	end if
+  end for
+  return format_columns(output)
+end function
+
+if params.len == 1 and params[0].indexOf("-") != null and not ValidateInput(params[0])) or (params.len == 2 and not ValidateInput(params[0])) or (params.len == 3 and (not ValidateInput(params[0]) or not ValidateInput(params[1])) then exit(command_info("ls_usage"))
+
+folderPath = current_path
+if params and params[params.len - 1].indexOf("-") == null then
+	folderPath = params[params.len - 1]
+end if
+
+folder = get_shell.host_computer.File(folderPath)
+if folder == null then exit("ls: No such file or directory")
+flag_hide = 0
+if params and params[0].indexOf("a") != null then flag_hide = 1
+flag_details = 0
+if params and params[0].indexOf("l") != null then flag_details = 1
+flsg_r = 1
+if existParam("-r") or existParam("-R") then flsg_r = 1
+flag_firstDir = 0
+print(main(folder))

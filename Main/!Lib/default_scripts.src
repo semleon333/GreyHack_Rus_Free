@@ -1,0 +1,780 @@
+//Не изменять!!!
+//command: cat
+if params.len != 1 or params[0] == "-h" or params[0] == "--help" then exit(command_info("cat_usage"))
+
+pathFile = params[0]
+file = get_shell.host_computer.File(pathFile)
+
+if file == null then exit("cat: file not found: "+pathFile)
+if file.is_binary then exit("cat: can't open " + file.path + ". Binary file")
+if not file.has_permission("r") then exit("cat: permission denied")
+
+print(file.get_content)
+
+//command: chgrp
+if params.len < 2 or (params.len == 3 and params[0] != "-R") then exit(command_info("chgrp_usage"))
+
+group = params[0]
+pathFile = params[1]
+isRecursive = 0
+
+if params.len == 3 then
+    group = params[1]
+    pathFile = params[2]
+    isRecursive = 1
+end if
+
+file = get_shell.host_computer.File(pathFile)
+if file == null then exit("chgrp: file not found: "+pathFile)
+output = file.set_group(group, isRecursive)
+if output then print(output)
+
+//command: chmod
+if params.len < 2 or (params.len == 3 and params[0] != "-R") then exit(command_info("chmod_usage"))
+
+permissions = params[0]
+pathFile = params[1]
+isRecursive = 0
+
+if params.len == 3 then
+    permissions = params[1]
+	pathFile = params[2]
+	isRecursive = 1
+end if
+
+file = get_shell.host_computer.File(pathFile)
+if file == null then exit("chmod: can't find " + pathFile)
+output = file.chmod(permissions, isRecursive)
+if output then print(output)
+
+//command: chown
+if params.len < 2 or (params.len == 3 and params[0] != "-R") then exit(command_info("chown_usage"))
+
+owner = params[0]
+pathFile = params[1]
+isRecursive = 0
+
+if params.len == 3 then
+    owner = params[1]
+    pathFile = params[2]
+    isRecursive = 1
+end if
+
+file = get_shell.host_computer.File(pathFile)
+if file == null then exit("chown: file not found: "+pathFile)
+output = file.set_owner(owner, isRecursive)
+if output then print(output)
+
+//command: cp
+if params.len != 2 or params[0] == "-h" or params[0] == "--help" then exit(command_info("cp_usage"))
+
+origFile = params[0]
+destFolder = params[1]
+
+computer = get_shell.host_computer
+file = computer.File(origFile)
+if not file then exit("cp: can't find " + origFile)
+
+newName = ""
+folder = computer.File(destFolder)
+if not folder then
+	//Check if the user wants to put a new name.
+	pathParent = parent_path(destFolder)
+
+	if pathParent == destFolder then
+		newName = destFolder
+		destFolder = file.parent.path
+		output = file.copy(destFolder, newName)
+		if output and output != 1 then print(output)
+		exit
+	end if
+
+	folder = computer.File(pathParent)
+	newName = destFolder[destFolder.len - (destFolder.len - pathParent.len):]
+	if newName[0] == "/" then
+		newName = newName[1:]
+	end if
+	if not folder then exit("cp: can't copy file. " + destFolder + " doesn't exist.")
+
+end if
+
+if folder then
+
+	//Check if is trying to copy the file on itself. Ignored.
+	if file.parent.path != folder.parent.path or file.name != folder.name then
+
+		finalDest = folder.path
+
+		if(newName.len == 0) then
+			newName = file.name
+		end if
+
+		if not folder.is_folder then
+			finalDest = file.parent.path
+			newName = folder.name
+		end if
+
+		output = file.copy(finalDest, newName)
+		if output and output != 1 then print(output)
+
+	end if
+end if
+
+//command: groupadd
+if params.len != 2 or params[0] == "-h" or params[0] == "--help" then exit(command_info("groupadd_usage"))
+
+user = params[0]
+group = params[1]
+
+output = get_shell.host_computer.create_group(user, group)
+if output == true then exit("Group " + group + " added to user " + user)
+if output then exit(output)
+print("Error: the group could not be created.")
+
+//command: groupdel
+if params.len != 2 or params[0] == "-h" or params[0] == "--help" then exit(command_info("groupdel_usage"))
+
+user = params[0]
+group = params[1]
+
+output = get_shell.host_computer.delete_group(user, group)
+if output == true then exit("Group " + group + " deleted from user " + user)
+if output then exit(output)
+print("Error: the group could not be deleted.")
+
+//command: groups
+if params.len != 1 or params[0] == "-h" or params[0] == "--help" then exit(command_info("groups_usage"))
+user = params[0]
+output = get_shell.host_computer.groups(user)
+if not output then exit(command_info("groups_usage"))
+print(output)
+
+//command: ifconfig
+if params.len != 0 and (params.len != 4 or params[0] == "-h" or params[0] == "--help") then exit(command_info("ifconfig_usage"))
+computer = get_shell.host_computer
+if (params.len == 0) then
+	router = get_router
+	if computer.is_network_active then
+	    lip = computer.local_ip
+    	pip = router.public_ip
+    	gw = computer.network_gateway
+	    if computer.active_net_card == "WIFI" then
+		    output = "\nConnected to Wi-Fi:\nEssid: " + router.essid_name + "\nBssid: " + router.bssid_name
+		else
+		    output = "\nEthernet connection:"
+		end if
+	else
+		lip = "0.0.0.0"
+		pip = "0.0.0.0"
+		gw = "0.0.0.0"
+		output = "\nNot connected to the network."
+	end if
+	print( output + "\n----------------\nPublic IP: " + pip + "\nLocal IP: " + lip + "\nGateway: " + gw + "\n")
+else
+	if params[2] != "gateway" then exit(command_info("ifconfig_usage"))
+	device = params[0]
+	address = params[1]
+	gateway = params[3]
+	if not is_valid_ip(address) then exit("ifconfig: invalid ip address")
+	if not is_valid_ip(gateway) then exit("ifconfig: invalid gateway")
+	output = computer.connect_ethernet(device, address, gateway)
+	if output.len > 0 then print(output)
+end if
+
+//command: kill
+if params.len != 1 or params[0] == "-h" or params[0] == "--help" then exit(command_info("kill_usage"))
+PID = params[0].to_int
+if typeof(PID) != "number" then exit("The PID must be a number\n" + command_info("kill_usage"))
+
+output = get_shell.host_computer.close_program(PID)
+if output == true then exit("Process " + PID + " closed");
+if output then exit(output)
+print("Process " + PID + " not found")
+
+//command: ls
+ValidateInput = function(input)
+	if input == "-la" or input == "-l" or input == "-a" then return true
+	return false
+end function
+
+if params.len > 3 or (params.len == 1 and params[0].indexOf("-") != null and not ValidateInput(params[0])) or (params.len == 2 and not ValidateInput(params[0])) or (params.len == 3 and (not ValidateInput(params[0]) or not ValidateInput(params[1]))) then
+	print(command_info("ls_usage"))
+
+else
+	computer = get_shell.host_computer
+	folderPath = current_path
+	if params and params[params.len - 1].indexOf("-") == null then
+		folderPath = params[params.len - 1]
+	end if
+
+	folder = computer.File(folderPath)
+	if folder == null then
+		print("ls: No such file or directory")
+	else
+		if not folder.has_permission("r") then
+			print("ls: permission denied")
+
+		else
+			showHide = 0
+			if params and params[0].indexOf("a") != null then
+				showHide = 1
+			end if
+
+			showDetails = 0
+			if params and params[0].indexOf("l") != null then
+				showDetails = 1
+			end if
+
+			subFiles = folder.get_folders + folder.get_files
+			output = ""
+			for subFile in subFiles
+				nameFile = subFile.name
+				permission = subFile.permissions
+				owner = subFile.owner
+				size = subFile.size
+				group = subFile.group
+
+				if showHide or nameFile.indexOf(".") != 0 then
+					if showDetails then
+						output = output + "\n" + permission + " " + owner + " " + group + " " + size + " 00:00 " + nameFile
+					else
+						output = output + "\n" + nameFile
+					end if
+				end if
+			end for
+
+			print(format_columns(output))
+
+		end if
+	end if
+end if
+
+//command: mkdir
+if params.len != 1 or params[0] == "-h" or params[0] == "--help" then
+	print(command_info("mkdir_usage"))
+else
+	computer = get_shell.host_computer
+	pathFile = params[0]
+	pathParent = parent_path(pathFile)
+	existFile = computer.File(pathFile)
+
+	if pathParent == pathFile then
+		pathParent = current_path
+	end if
+
+	parent = computer.File(pathParent)
+	if parent == null then
+		print("mkdir: " + pathParent + " not found")
+
+	else if existFile != null then
+		print("mkdir: " + existFile.path + " file exists")
+
+	else if not parent.has_permission("w") then
+		print("mkdir: permission denied")
+
+	else
+		arrayPath = pathFile.split("/")
+		output = computer.create_folder(parent.path, arrayPath[arrayPath.len - 1])
+		if output != null and output != 1 then
+			print(output)
+		end if
+
+	end if
+end if
+
+//command: mv
+if params.len != 2 then
+	print(command_info("mv_usage"))
+else
+	origFile = params[0]
+	destFolder = params[1]
+
+	computer = get_shell.host_computer
+	file = computer.File(origFile)
+	if file == null then
+		print("mv: can't find " + origFile)
+
+	else
+		newName = ""
+		folder = computer.File(destFolder)
+		if folder == null then
+			//Check if the user wants to put a new name.
+			pathParent = parent_path(destFolder)
+
+			if pathParent == destFolder then
+				newName = destFolder
+				destFolder = file.parent.path
+				file.move(destFolder, newName)
+
+			else
+
+				folder = computer.File(pathParent)
+				newName = destFolder[destFolder.len - (destFolder.len - pathParent.len):]
+				if newName[0] == "/" then
+					newName = newName[1:]
+				end if
+				if folder == null then
+					print("mv: can't copy file. " + destFolder + " doesn't exist.")
+				end if
+			end if
+
+		end if
+
+		if folder != null then
+
+			//Check if is trying to copy the file on itself. Ignored.
+			if file.parent.path != folder.parent.path or file.name != folder.name then
+
+				finalDest = folder.path
+
+				if(newName.len == 0) then
+					newName = file.name
+				end if
+
+				if not folder.is_folder then
+					finalDest = file.parent.path
+					newName = folder.name
+				end if
+
+				if file.parent.path == folder.parent.path and newName != file.name then
+					file.rename(newName)
+				else
+					file.move(finalDest, newName)
+				end if
+			end if
+		end if
+	end if
+end if
+
+//command: passwd
+if params.len != 1 or params[0] == "-h" or params[0] == "--help" then exit(command_info("passwd_usage"))
+
+inputMsg = "Changing password for user " + params[0] +".\nNew password:"
+inputPass = user_input(inputMsg, true)
+
+output = get_shell.host_computer.change_password(params[0], inputPass)
+if output == true then exit("password modified OK")
+if output then exit(output)
+print("Error: password not modified")
+
+//Command: ping
+if params.len != 1 or params[0] == "-h" or params[0] == "--help" then exit(command_info("ping_usage"))
+result = get_shell.ping(params[0])
+if result then
+    if typeof(result) == "string" then
+        print(result)
+	else
+	    print("Ping successful")
+	end if
+else
+	print("ip unreachable");
+end if
+
+//command: ps
+if params.len > 0 then exit(command_info("ps_usage"))
+output = get_shell.host_computer.show_procs
+print(format_columns(output))
+
+//command: pwd
+print(current_path)
+
+//command: rm
+if params.len < 1 or params.len > 2 or params[0] == "-h" or params[0] == "--help" then exit(command_info("rm_usage"))
+
+pathFile = params[0]
+isRecursive = 0
+if params[0] == "-r" then
+	if params.len == 1 then exit(command_info("rm_usage"))
+	isRecursive = 1
+	pathFile = params[1]
+end if
+file = get_shell.host_computer.File(pathFile)
+
+if file == null then exit("rm: file not found: "+pathFile)
+if not file.has_permission("w") then exit("rm: permission denied")
+
+if file.is_folder == 1 and isRecursive == 0 then
+	print("rm: " + file.name + " is a directory")
+else
+	output = file.delete
+	if output.len > 0 then print(output)
+end if
+
+//command: sudo
+if not params or params[0] == "-h" or params[0] == "--help" then exit(command_info("sudo_usage"))
+if params[0] == "-u" and params.len != 2 then exit(command_info("sudo_usage"))
+
+inputPass = user_input("Password: ", true)
+
+if params[0] == "-u" then
+	shell = get_shell(params[1], inputPass)
+	if not shell then exit("sudo: incorrect username or password")
+else
+	shell = get_shell("root", inputPass)
+	if not shell then exit("sudo: incorrect password")
+end if
+
+if params[0] == "-s" or params[0] == "-u" then
+	shell.start_terminal
+else
+	computer = shell.host_computer
+	args = params[1:].join(" ")
+	if not params[0].indexOf("/") then
+		globalPath = [current_path, "/bin", "/usr/bin"]
+		for path in globalPath
+			program = computer.File(path + "/" + params[0])
+			if program != null then exit(shell.launch(program.path, args))
+		end for
+	else
+		program = computer.File(params[0])
+		if not program then exit(params[0] + " not found.")
+		shell.launch(program.path, args)
+	end if
+end if
+
+//command: touch
+if params.len != 1 or params[0] == "-h" or params[0] == "--help" then exit(command_info("touch_usage"))
+
+pathFile = params[0]
+pathParent = parent_path(pathFile)
+computer = get_shell.host_computer
+
+if pathParent == pathFile then
+	pathParent = current_path
+end if
+
+parent = computer.File(pathParent)
+
+if not parent then exit("touch: " + pathParent + " not found")
+if not parent.has_permission("w") then exit("touch: permission denied")
+
+arrayPath = pathFile.split("/")
+output = computer.touch(parent.path, arrayPath[arrayPath.len - 1])
+if output and output != 1 then print(output)
+
+//command: useradd
+if params.len != 1 or params[0] == "-h" or params[0] == "--help" then exit(command_info("useradd_usage"))
+
+inputMsg = "Setting password for user " + params[0] +".\nNew password:"
+inputPass = user_input(inputMsg, true)
+
+output = get_shell.host_computer.create_user(params[0], inputPass)
+if output == true then exit("User created OK")
+if output then exit(output)
+print("Error: the user could not be created.")
+
+//command: userdel
+if not params.len or (params.len == 1 and params[0] == "-r") or params[0] == "-h" or params[0] == "--help" then exit(command_info("userdel_usage"))
+
+delete = 0
+if params[0] == "-r" then
+  delete = 1
+  params.pull
+end if
+
+output = get_shell.host_computer.delete_user(params[0], delete)
+if output == true then exit("user " + params[0] + " deleted.")
+if output then exit(output)
+print("Error: user not deleted.")
+
+///////////
+/////////// Network
+///////////
+
+//command: aireplay
+cryptools = include_lib("/lib/crypto.so")
+if not cryptools then exit("Error: Missing crypto library")
+if params.len != 4 or params[0] == "-h" or params[0] == "--help" or params[0] != "-b" or params[2] != "-e" then exit(command_info("aireplay_usage"))
+
+bssid = params[1]
+essid = params[3]
+result = cryptools.aireplay(bssid, essid)
+if typeof(result) == "string" then exit(result)
+
+//command: aircrack
+cryptools = include_lib("/lib/crypto.so")
+if not cryptools then exit("Error: Missing crypto library")
+if params.len != 1 or params[0] == "-h" or params[0] == "--help" then exit(command_info("aircrack_usage"))
+
+pathFile = params[0]
+file = get_shell.host_computer.File(pathFile)
+if file == null then exit("aircrack: file not found: "+pathFile)
+if not file.is_binary then exit("aircrack: Can't process file. Not valid filecap.")
+if not file.has_permission("r") then exit("aircrack: permission denied")
+
+key = cryptools.aircrack(file.path)
+if key then
+	print("KEY FOUND! [" + key + "]" )
+else
+	print("aircrack: Unable to get the key" )
+end if
+
+//command: airmon
+cryptools = include_lib("/lib/crypto.so")
+if not cryptools then exit("Error: Missing crypto library")
+if params.len > 0 and (params.len != 2 or params[0] == "-h" or params[0] == "--help") then exit(command_info("airmon_usage"))
+
+computer = get_shell.host_computer
+formatOutput = "Interface Chipset Monitor_Mode\n"
+if params.len == 0 then	exit(format_columns(formatOutput + computer.network_devices))
+option = params[0]
+device = params[1]
+if option != "start" and option != "stop" then exit(command_info("airmon_usage"))
+
+output = cryptools.airmon(option, device)
+if not output then exit("airmon: " + device + " not found")
+if typeof(output) == "string" then exit(output)
+print(format_columns(formatOutput + computer.network_devices))
+
+//Command: ftp
+if params.len < 2 or params.len > 3 then exit(command_info("ftp_usage"))
+credentials = params[0].split("@")
+user = credentials[0]
+password = credentials[1]
+
+port = 21
+// params is a list of strings, so you have to convert it to integer, which is what connect_service accepts.
+if params.len == 3 then port = params[2].to_int
+if typeof(port) != "number" then exit("Invalid port: " + port)
+print("Connecting...")
+
+ftp_shell = get_shell.connect_service(params[1], port, user, password, "ftp")
+if ftp_shell then ftp_shell.start_terminal
+
+//command: iwconfig
+if params.len != 4 or params[0] == "-h" or params[0] == "--help" then exit(command_info("iwconfig_usage"))
+computer = get_shell.host_computer
+devices = computer.network_devices
+if devices == null or devices.indexOf(params[0]) == null then exit("iwconfig: Network device not found")
+bssid = params[1]
+essid = params[2]
+password = params[3]
+status = computer.connect_wifi(params[0], bssid, essid, password)
+if typeof(status) == "string" then print(status)
+
+
+//command: nmap
+if params.len != 1 or params[0] == "-h" or params[0] == "--help" then exit(command_info("nmap_usage"))
+if not is_valid_ip(params[0]) then exit("nmap: invalid ip address")
+if not get_shell.host_computer.is_network_active then exit("nmap: can't connect. No internet access.")
+
+ipAddress = params[0]
+isLanIp = is_lan_ip( ipAddress )
+
+if isLanIp then
+   router = get_router;
+else
+   router = get_router( ipAddress )
+end if
+
+if router == null then exit("nmap: ip address not found")
+ports = null
+
+if not isLanIp then
+   ports = router.used_ports
+else
+   ports = router.device_ports(ipAddress)
+end if
+
+if ports == null then exit("nmap: ip address not found")
+if typeof(ports) == "string" then exit(ports)
+
+info = "PORT STATE SERVICE VERSION LAN"
+print("\nStarting nmap v1.1 at " + current_date)
+print("Interesting ports on " + params[0] + "\n")
+if(ports.len == 0) then exit("Scan finished. No open ports.")
+
+for port in ports
+   service_info = router.port_info(port)
+   lan_ips = port.get_lan_ip
+   port_status = "open"
+
+   if(port.is_closed and not isLanIp) then
+      port_status = "closed"
+   end if
+   info = info + "\n" + port.port_number + " " + port_status + " " + service_info + " " + lan_ips
+end for
+print(format_columns(info) + "\n")
+
+//command: nslookup
+if params.len != 1 or params[0] == "-h" or params[0] == "--help" then
+	print(command_info("nslookup_usage"))
+else
+	address = params[0]
+	print("Address: "+nslookup(address));
+end if
+
+//command: smtp-user-list
+cryptools = include_lib("/lib/crypto.so")
+if not cryptools then exit("Error: Missing crypto library")
+
+if params.len == 0 or params.len > 2 or params[0] == "-h" or params[0] == "--help" then exit(command_info("smtpuserlist_usage"))
+
+ipAddress = params[0]
+port = "25"
+if(params.len > 1) then
+   port = params[1]
+end if
+
+print("Connecting...")
+users = cryptools.smtp_user_list(ipAddress, port.to_int)
+if not users then exit("smtp_user_list: invalid parameters")
+if(typeof(users) == "string") then exit(users)
+
+print("Starting smtp-mail-list...\n\n###### Scan started ######")
+for user in users
+   print(user)
+end for
+print("###### Scan completed ######\n" + users.len + " results.")
+
+//Command: ssh
+if params.len < 2 or params.len > 3 then exit(command_info("ssh_usage"))
+credentials = params[0].split("@")
+user = credentials[0]
+password = credentials[1]
+
+port = 22
+// params is a list of strings, so you have to convert it to integer, which is what connect_service accepts.
+if params.len == 3 then port = params[2].to_int
+if typeof(port) != "number" then exit("Invalid port: " + port)
+print("Connecting...")
+
+shell = get_shell.connect_service(params[1], port, user, password, "ssh")
+if shell then shell.start_terminal
+
+//command: whois
+if params.len != 1 or params[0] == "-h" or params[0] == "--help" then
+	print(command_info("whois_usage"))
+else
+	address = params[0]
+	print(whois(address))
+end if
+
+//command: build
+if params.len != 2 then
+	print(command_info("build_usage"))
+else
+	pathSource = params[0]
+	programPath = params[1]
+
+	shell = get_shell
+	computer = shell.host_computer
+	fileSource = computer.File(pathSource)
+	folderDest = computer.File(programPath)
+
+	if fileSource == null then exit("build: can't find "+ pathSource)
+	if folderDest == null then exit("build: can't find " + programPath)
+
+	output = shell.build(fileSource.path, folderDest.path)
+	if output.len == 0 then
+		print("build successful.")
+	else
+		print(output);
+	end if
+end if
+
+//command: decipher
+cryptools = include_lib("/lib/crypto.so")
+if not cryptools then exit("Error: Missing crypto library")
+
+GetPassword = function(userPass)
+	if userPass.len != 2 then exit("decipher: " + file.path + " wrong syntax")
+	password = cryptools.decipher(userPass[1])
+	return password
+end function
+
+if params.len != 1 or params[0] == "-h" or params[0] == "--help" then exit(command_info("decipher_usage"))
+
+origFile = params[0]
+file = get_shell.host_computer.File(origFile)
+if not file then exit("decipher: can't find " + origFile)
+if not file.has_permission("r") then exit("can't read file. Permission denied")
+if file.get_content.len == 0 then exit("decipher: no users found")
+
+lines = file.get_content.split("\n")
+password = null
+if lines.len == 1 then
+
+	userPass = lines[0].split(":")
+	password = GetPassword(userPass)
+else
+	print("Multiple users found.")
+	numLine = 1
+	for line in lines
+		if line.len > 0 then
+			print(numLine + ": " + line)
+			numLine = numLine + 1
+		end if
+	end for
+	option = ""
+	inputOk = false
+	while( not inputOk )
+		option = user_input("Select user: ").to_int
+		if typeof(option) != "number" or (option < 1 or option > lines.len) then
+			print("Invalid input. Type a valid number")
+		else
+			inputOk = true
+		end if
+	end while
+
+	userPass = lines[option - 1].split(":")
+	print("Selected user: " + userPass[0] + "\nDeciphering...")
+	password = GetPassword(userPass)
+end if
+
+if not password then exit("Can't find password :(")
+print("password found! => " + password)
+
+//command scanlib
+if params.len != 1 or params[0] == "-h" or params[0] == "--help" then exit(command_info("scanlib_usage"))
+metaxploit = include_lib("/lib/metaxploit.so")
+if not metaxploit then exit("Error: Missing metaxploit library")
+libFile = get_shell.host_computer.File(params[0])
+if not libFile then exit("can't find library: " + params[0])
+print("Scanning memory address...")
+metaLib = metaxploit.load(libFile.path)
+listMem = metaxploit.scan(metaLib)
+index = 1
+for itemMem in listMem
+	print(index +": [" + itemMem + "]")
+	index = index + 1
+end for
+if listMem.len == 0 then exit("Scan completed: No issues detected.")
+
+print("Scan completed: detected issues in " + listMem.len + " memory zones.")
+option = ""
+inputOk = false
+while( not inputOk )
+	option = user_input("Select memory index: ").to_int
+	if typeof(option) != "number" or (option < 1 or option > listMem.len) then
+		print("Invalid input. Type a valid number")
+	else
+		inputOk = true
+	end if
+end while
+print("Scanning for vulnerabilities at memory zone: " + listMem[option - 1])
+print(metaxploit.scan_address(metaLib, listMem[option - 1]))
+
+//command: scanrouter
+if params.len != 1 or params[0] == "-h" or params[0] == "--help" then exit(command_info("scanrouter_usage"))
+ipAddress = params[0]
+
+router = get_router( ipAddress )
+if router == null then exit("scanrouter: ip address not found")
+print("Connecting to router at address: " + ipAddress + "\nScanning kernel library...")
+version = router.kernel_version
+if not version then
+	print("Warning: kernel_router.so not found")
+else
+	print("kernel_router.so : v" + version)
+end if
+
+firewall_rules = router.firewall_rules
+if typeof(firewall_rules) == "string" then exit(firewall_rules)
+print("\nScanning firewall rules...")
+if firewall_rules.len == 0 then exit("No rules found.")
+info = "ACTION PORT SOURCE_IP DESTINATION_IP"
+for rules in firewall_rules
+	info = info + "\n" + rules
+end for
+print(format_columns(info) + "\n")

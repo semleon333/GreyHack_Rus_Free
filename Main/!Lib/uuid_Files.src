@@ -1,0 +1,113 @@
+//генерирование UUID на основе размера файлов,
+//никому не рассказывайте ничего про то как это работает, а лучше и сами не понимайте =)
+ERR_PRINT = function(str)
+	print("<color=#FF2222><b> ERROR: </b></color>" + str)
+end function
+ERR_FATAL = function(str)
+	exit("<color=#FF2222><b> ERROR_FATAL: </b></color>" + str)
+end function
+ERR_STRING = function(str)
+	return("<color=#FF2222><b> ERROR: </b></color>" + str)
+end function
+existParam = function(paramType)//проверка существования параметра paramType в globals.params
+	for param in params
+		if param.lower == paramType.lower then return true
+	end for
+	return false
+end function
+dbg = function(str)//печатает "Debug: str"
+	if flag_dbg then print("<color=#AAA><b>Debug:</b> <color=#FFF>" + str + "</color>")
+end function
+flag_dbg = false
+if existParam("-dbg") or existParam("--debug") then flag_dbg = true
+
+decToHex = function(dec,l=8)
+  d_h = function(num)
+    if num == 10 then return "A"
+    if num == 11 then return "B"
+    if num == 12 then return "C"
+    if num == 13 then return "D"
+    if num == 14 then return "E"
+    if num == 15 then return "F"
+  end function
+  hex = ""
+  while hex.len<l
+		if dec>0 then
+      h = dec%16
+      if hex>9 then h = d_h(h)
+			hex = h + hex
+			dec = (dec-dec%16)/16
+		else
+			hex = "0" + hex
+		end if
+	end while
+  return hex
+end function
+
+UUID = {}
+UUID.NAMES = [".UUID0",".UUID1",".UUID2",".UUID3"]
+UUID.SYS_PATH = "/.UUID/"
+UUID.grub = function()
+  files = []
+  dbg(UUID.SYS_PATH+UUID.NAMES[0])
+  for i in range(0, UUID.NAMES.len-1)
+    dbg(files.push(get_shell.host_computer.File(UUID.SYS_PATH+UUID.NAMES[i])))
+  end for
+  s = ""
+  for file in files
+    if not file then
+      ERR_PRINT("Not found UUID files")
+      return null
+    end if
+    s = s + decToHex(file.size.to_int,8)
+  end for
+  return s
+end function
+UUID.gen = function(dec,l)
+  dirPath = UUID.SYS_PATH
+  dbg(dirPath)
+  names = [str(rnd())[1:],str(rnd())[1:],str(rnd())[1:],str(rnd())[1:]]
+  for i in names
+    dbg(get_shell.host_computer.touch(dirPath,i+".src"))
+  end for
+  uuidTxtFiles = []
+  for i in names
+    uuidTxtFiles.push(get_shell.host_computer.File(dirPath+i+".src"))
+  end for
+  dbg(uuidTxtFiles)
+  dbg(uuidTxtFiles[0])
+  for i in uuidTxtFiles
+    if i == null then
+      ERR_PRINT("UUID file not created")
+      return
+    end if
+  end for
+  dbg(uuidTxtFiles[0].name)
+  for i in uuidTxtFiles
+    dbg(i.set_content("print("+char(34)+"system file, not delete!"+char(34)+")"))
+  end for
+  dbg("build/delete")
+  for i in uuidTxtFiles
+    dbg(get_shell.build(i.path, dirPath))
+    dbg(i.delete)
+  end for
+  dbg("build/delete end")
+  uuidRawFiles = []
+  for i in range(0, names.len-1)
+    uuidRawFiles.push(get_shell.host_computer.File(dirPath+names[i]))
+  end for
+  dbg(uuidRawFiles)
+  if get_shell.host_computer.File(dirPath+UUID.NAMES[0]) then
+    for i in range(0, UUID.NAMES.len-1)
+      dbg(get_shell.host_computer.File(dirPath+UUID.NAMES[i]).delete)
+    end for
+  end if
+  for i in range(0, uuidRawFiles.len-1)
+    dbg(uuidRawFiles[i].name)
+    dbg(uuidRawFiles[i].rename(".UUID"+i))
+  end for
+  dbg("end UUID generation"+char(10))
+end function
+
+UUID.gen()
+print(UUID.grub())

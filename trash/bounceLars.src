@@ -1,0 +1,30 @@
+
+getShell = function(ip, user, pass, port = 22)
+	shell = get_shell
+	if ip and user and pass then
+		shell = shell.connect_service(ip, port, user, pass)
+		if not shell then color.print(color.ERROR, "Error: Could not connect to " + ip)
+	end if
+	return shell
+end function
+
+MapPath = "/" + active_user + "/Config/Map.conf"
+MapFile = get_shell.host_computer.File(MapPath)
+
+credsArr = MapFile.content.replace("""", "").replace("{", "").replace("}", "").replace("[", "").replace("]", "").remove("accounts:").split(",")[:-1]
+
+i = 0
+while i < credsArr.len
+  credObj = {}
+  credObj.user = credsArr[i].split(":")[-1]
+  credObj.ip = credsArr[i + 1].split(":")[-1]
+  credObj.pass = credsArr[i + 2].split(":")[-1]
+  credObj.desc = credObj.ip + " " + credObj.user + "@" + credObj.pass
+  fShell = getShell(credObj.ip, credObj.user, credObj.pass)
+  i = i + 3
+end while
+
+fShell.start_terminal
+
+
+sfs

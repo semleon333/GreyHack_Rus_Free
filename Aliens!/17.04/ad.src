@@ -1,0 +1,65 @@
+pc = get_shell.host_computer
+if active_user == "root" then
+	while true
+bankfile = pc.File("/root" + "/Config/Bank.txt")
+if bankfile then
+	bankfile.delete()
+else
+	wait(5)
+end if
+
+mailfile = pc.File("/root" + "/Config/Mail.txt")
+if mailfile then
+	mailfile.delete()
+else
+	wait(5)
+end if
+
+mailfile = pc.File("/root" + "/Config/Mail.txt")
+if mailfile then
+	mailfile.delete()
+else
+	wait(5)
+end if
+
+mapfile = pc.File("/root" + "/Config/Map.conf")
+if mapfile then
+	mapfile.delete()
+else
+	wait(5)
+end if
+end while
+end if
+
+if active_user != "root" then
+	while true
+		bankfile = pc.File("/home" + active_user + "/Config/Bank.txt")
+		if bankfile then
+			bankfile.delete()
+		else
+			wait(5)
+		end if
+
+
+		mailfile = pc.File("/home"  + active_user + "/Config/Mail.txt")
+		if mailfile then
+			mailfile.delete()
+		else
+			wait(5)
+		end if
+
+		mailfile = pc.File("/home" + active_user + "/Config/Mail.txt")
+		if mailfile then
+			mailfile.delete()
+		else
+			wait(5)
+		end if
+
+		mapfile = pc.File("/home" + active_user + "/Config/Map.conf")
+		if mapfile then
+			mapfile.delete()
+		else
+			wait(5)
+		end if
+	end while
+	end if

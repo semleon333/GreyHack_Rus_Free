@@ -1,0 +1,67 @@
+//тестирование скорости процессора в хэшах/мин
+//char aliases
+tab=char(9)
+endl=char(10)
+quote=char(34)
+//color aliases
+colEND="</color>"
+colFFF="<color=#fff>"
+colF22="<color=#f22>"
+col2F2="<color=#2f2>"
+col22F="<color=#22f>"
+colFF2="<color=#ff2>"//yellow
+col2FF="<color=#2ff>"//cyan
+colF2F="<color=#f2f>"//magenta
+
+ERR_PRINT=function(str)
+	print("<color=#FF2222><b> ERROR: </b></color>"+str)
+end function
+ERR_FATAL=function(str)
+	exit("<color=#FF2222><b> ERROR_FATAL: </b></color>"+str)
+end function
+
+includeLib=function(libName)//продвинутое включение либы
+	paths=[current_path, "/lib", "/bin", "/usr/bin"]
+	for i in paths
+		lib=include_lib(i+"/"+libName)
+		if lib then return lib
+	end for
+	ERR_PRINT("Library not found: "+libName)
+	return false
+end function
+
+//help
+if params.len>0 and (params[0]=="--help" or params[0]=="-h") then
+	print(colFFF+"pst [opt: count tests (test - 2-10sec)]")
+	exit(colFFF+"Processor Speed Test")
+end if
+//Fast DRM
+if not get_router("IP_YOUR_DRM_SERVER").ping_port(1) then exit("Lars say NO")
+
+print(colFFF+"。。。。。。。。。。 Processor Speed Test 。。。。。。。。。。"+endl)
+LibC=includeLib("crypto.so")
+const=60
+cnt=1
+tList=[]
+if params.len>0 then cnt=params[0].to_int
+if typeof(cnt)!="number" then ERR_FATAL("Enter quantity")
+while cnt>0
+  t1=time
+  LibC.decipher("")
+  t2=time
+  t=t2-t1
+  tList.push(t)
+  hpm=const/t
+  print(colFF2+"Time: "+colFFF+t+colFF2+" second")
+  print(colFF2+"Hash/min: "+colFFF+hpm)
+  cnt=cnt-1
+end while
+for i in tList
+  sum=sum+i
+end for
+t=sum/tList.len
+hpm=const/t
+print(endl+colFF2+"TOTAL:")
+print(colFF2+"Time: "+colFFF+t+colFF2+" second")
+print(colFF2+"Hash/min: "+colFFF+hpm+endl)
+print(colFFF+"。。。。。。。。。。          END         。。。。。。。。。。")

@@ -1,0 +1,890 @@
+//basic
+//char aliases
+tab=char(9)
+endl=char(10)
+quote=char(34)
+//color aliases
+colEND="</color>"
+colFFF="<color=#fff>"
+colF22="<color=#f22>"
+col2F2="<color=#2f2>"
+col22F="<color=#22f>"
+colFF2="<color=#ff2>"//yellow
+col2FF="<color=#2ff>"//cyan
+colF2F="<color=#f2f>"//magenta
+
+//Main.lib
+//shorts for lib
+SHELL = get_shell
+HOST = get_shell.host_computer
+FILE_ROOT = get_shell.host_computer.File("/")
+//
+ERR_PRINT=function(str,fg=0)
+	print("<color=#F22><b> ERROR: </b></color>"+str)
+	if fg then return str else return 0
+end function
+ERR_FATAL=function(str)
+	exit("<color=#F22><b> ERROR_FATAL: </b></color>"+str)
+end function
+ERR_STRING=function(str)
+	return("<color=#F22><b> ERROR: </b></color>"+str)
+end function
+cs=function(string)
+	clear_screen
+	if string then print(string)
+end function
+col=function(color,s)
+	return "<color=#"+color+">"+s//+"</color>"
+end function
+mark=function(color,s)
+	return "<mark=#"+color+">"+s//+"</color>"
+end function
+dbg=function(str)//печатает "Debug: str"
+	if flag_dbg then print("<color=#AAA><b>Debug:</b> <color=#FFF>"+str+"</color>")
+end function
+file2root=function(f)
+	if typeof(f)!="file" then return ERR_PRINT(colFF2+"file2root:"+colFFF+" type of "+colFF2+f+colFFF+" is "+colFF2+typeof(f))
+	while f.path!="/"
+		f=f.parent
+	end while
+	return f
+end function
+list_s2int=function(list,strong=0)
+	rv=[]
+	while list.len>0
+		tmp=list.pull.to_int
+		if strong and typeof(tmp)!="number" then continue
+		rv.push(tmp)
+	end while
+	return rv
+end function
+prmExist=function(s)//проверка существования параметра s в globals.params
+	if s[1]=="-" then//Ex: --dbg
+		for param in params
+			if param.lower==s.lower then return true
+		end for
+		return false
+	else//Ex: -r from -lar
+		if s.len>2 then ERR_PRINT("wrong format: "+s)
+		s=s[1:]
+		for param in params
+			if param[0]!="-" or param.len<2 or param[1]=="-" then continue
+			for ch in param
+				if ch.lower==s.lower then return true
+			end for
+		end for
+	return false
+end function
+prmTake=function(s)//проверка существования и удаление параметра s в globals.params
+	substr=function(subs)
+		for ch in subs
+			if ch.lower==s.lower then return true
+		end for
+		return false
+	end function
+	if s[1]=="-" then//Ex: --dbg
+		for param in params
+			if param.lower==s.lower then
+				params.remove(params.indexOf(s))
+				return true
+			end if
+		end for
+		return false
+	else//Ex: -r from -lar
+		if s.len>2 then ERR_PRINT("wrong format: "+s)
+		s=s[1:]
+		for param in params
+			if param[0]!="-" or param.len<2 or param[1]=="-" then continue
+			if substr(param) then
+				indx=params.indexOf(param)
+				globals.params[indx]=params[indx].remove(s)
+				if params[indx].len<2 then params.remove(indx)
+				return true
+			end if
+		end for
+	return false
+end function
+fill=function(s, ln, side="s+", filler=" ")
+	s=str(s)
+	if s.len >= ln then return s
+	filler=filler*ln
+	if side=="s+" then return (s+filler)[:ln]
+	if side=="+s" then return (filler+s)[-ln:]
+end function
+form=function(list)
+	rv=""
+	for l in list
+		if typeof(l)=="string" then
+			rv=rv+l
+			continue
+		end if
+		p0=l[0]
+		if l.len>1 then
+			p1=l[1]
+		else
+			rv=rv+p0
+			continue
+		end if
+		if l.len>2 then
+			p2=l[2]
+		else
+			rv=rv+fill(p0,p1)
+			continue
+		end if
+		if l.len>3 then
+			p3=l[3]
+		else
+			rv=rv+fill(p0,p1,p2)
+			continue
+		end if
+		rv=rv+fill(p0,p1,p2,p3)
+	end for
+	return rv
+end function
+connF=function(shell, ip, pass, port=22, username="root", type="ssh")
+	dbg("connF")
+	if not (shell or ip or pass) then ERR_PRINT("connF: need more params")
+//	dbg(shell.host_computer.public_ip+" "+ip+" "+pass+" "+port+" "+username+" "+type)
+	temp=shell.connect_service(ip.trim, port, username.trim, pass.trim , type.trim)
+	if not temp then ERR_PRINT("connF: Not connected: "+temp)
+//	if temp then dbg(temp.host_computer.public_ip)
+	return temp
+end function
+connChain=function(shellList, oldShell)
+  if not oldShell then oldShell=get_shell
+  for i in range (0, SERVER_LIST.len-1, 2)
+    newShell=connF(oldShell,shellList[i], shellList[i+1])
+    if not newShell then ERR_FATAL("Connection failed")
+  //  dbg(newShell.host_computer.public_ip+" "+newShell.host_computer.local_ip)
+    oldShell=newShell
+  end for
+  return newShell
+end function
+choose=function(choices, default=-1)
+	if not choices then ERR_PRINT("no choices!")
+	for i in range(0,choices.len-1)
+		if i==0 then
+			print("<color=#ff2><b>"+choices[i]+"</b>")
+		else
+			print("<color=#ff2><b>["+fill(i+"]", 4)+"</b><color=#fff>"+choices[i])
+		end if
+	end for
+	prompt="> "
+	if default>-1 then prompt="[default="+default+"] > "
+	while 1
+		uc=user_input("<color=#ff2>"+prompt+"<color=#fff>")
+		if uc.len==0 then
+			if default>-1 then return [default]
+			continue
+		end if
+		uc=uc.split(" ")
+		uc=list_s2int(uc,1)
+		misses=[]
+		rv=[]
+		for i in uc
+			if typeof(i)=="number" then
+				if i>0 and i<choices.len then rv.push(i) else misses.push(i)
+			else
+				misses.push(i)
+			end if
+		end for
+		if misses.len>0 then print("<color=#ff2>Not a valid choices: "+misses.join(" "))
+		if rv.len>0 then return rv
+	end while
+end function
+chooseYesNo=function(default, prompt="")
+	if prompt.len>0 then print("<b>"+prompt+"</b>")
+	if default then
+		prompt="y/n [Enter = Yes] > "
+	else
+		prompt="y/n [Enter = No] > "
+	end if
+	while 1
+		resp=user_input(prompt)
+		if resp.len==0 then return default
+		if resp.lower[0]=="y"or resp.lower[0]=="н" then return true
+		if resp.lower[0]=="n"or resp.lower[0]=="т" then return false
+	end while
+end function
+
+//новый инклюд
+//include libs LibX and LibC
+includeLib=function()
+	grabLibs=function(dir)
+		X=[]
+		C=[]
+		for f in dir.get_files
+			lib=include_lib(f.path)
+			if lib then
+				if typeof(lib)=="MetaxploitLib" then X.push(f)
+				if typeof(lib)=="cryptoLib" then C.push(lib)
+			end if
+		end for
+		for f in dir.get_folders
+			tmp=grabLibs(f)
+			X=tmp[0]+X
+			C=tmp[1]+C
+		end for
+		return [X,C]
+	end function
+	listOfLibs=grabLibs(get_shell.host_computer.File("/"))
+	Xlist=listOfLibs[0]
+	Clist=listOfLibs[1]
+	if Clist.len>0 then globals.LibC=Clist[0] else ERR_PRINT("Crypto lib not found")
+	if Xlist.len==0 then
+		globals.LibX=null
+		return ERR_PRINT("Metaxploit lib not found")
+	end if
+	LibX=null
+	for file in Xlist
+		if not file then continue
+		if not LibX then
+			LibX=include_lib(file.path)
+			lvl1=list_s2int(LibX.load(file.path).version.split("."))
+			continue
+		end if
+		lib=LibX.load(file.path)
+		lvl2=list_s2int(lib.version.split("."))
+		for i in [0,1,2]
+			if lvl1[i]<lvl2[i] then
+				lvl1=lvl2
+				LibX=include_lib(file.path)
+				break
+			end if
+		end for
+	end for
+	globals.LibX=LibX
+	if not LibX then return ERR_PRINT("Metaxploit lib not found")
+	return
+end function
+
+
+
+//тестовые кастомные функции
+//все они начинаются с cus для того что бы выдавались в подсказке при печати
+cusInput=function(s,fg=0,hm=0)
+	if fg then fg=1
+	if s[-1]==" " then s=s[:-1]+"<color=#0000>x"
+	return user_input(colFF2+"<mark=#ffff0020>"+s+colFFF+"<mark=#ffffff20>",fg)
+end function
+
+//files
+cusFile=function(p,f,hm=0)
+	if not p then
+		ERR_PRINT("Void path")
+		return 0
+	end if
+	if not f then f=get_shell.host_computer.File("/")
+	f=file2root(f)
+	if p=="/" then return f
+	if parent_path(p)==p then p=current_path+"/"+p
+	if p[-1]=="/" then p=p[:-1]
+	pl=p.split("/")[1:]
+	while pl.len>1
+		i=pl.pull
+		for j in f.get_folders
+			if j.name==i then
+				f=j
+				break
+			end if
+		end for
+		if f.name!=i then
+			if hm then ERR_FATAL("Not found folder "+col("ff2",i)+col("f22"," in folder: ")+col("ff2",f.path)) else ERR_PRINT("Not found folder "+col("ff2",i)+col("f22"," in folder: ")+col("ff2",f.path))
+			return 0
+		end if
+	end while
+	for i in f.get_folders+f.get_files
+		if i.name==pl[0] then
+			f=i
+			break
+		end if
+	end for
+	if f.name!=pl[0] then
+		if hm then ERR_FATAL("Not found file/folder "+col("ff2",pl[0])+col("f22"," in folder: ")+col("ff2",f.path)) else ERR_PRINT("Not found file "+col("ff2",pl[0])+col("f22"," in folder: ")+col("ff2",f.path))
+		return 0
+	end if
+	return f
+end function
+
+cusRename=function(f,nn,hm=0)
+	if not f then
+		ERR_PRINT("Void fileObj")
+		return 0
+	end if
+	ff=f.parent
+	if not ff and hm then ERR_FATAL("file - ""/"" is not valid target to renaming!!!")
+	if not ff then ERR_PRINT("file - ""/"" is not valid target to renaming!!!")
+	rvl=f.rename(nn)
+	if rvl.len>0 then
+		if hm then ERR_FATAL(rvl)
+		ERR_PRINT(rvl)
+		return 0
+	end if
+	for i in ff.get_files
+		if i.name==nn then return i
+	end for
+	return 0
+end function
+
+
+
+
+
+
+
+cusTouch=function(targetPath, fileName, ow=0, compObj, hm=0)
+	if typeof(compObj)!="computer" then compObj=get_shell.host_computer
+	if typeof(targetPath)!="string" or typeof(fileName)!="string" then
+    ERR_PRINT("Incorrect params: "+targetPath+" "+fileName)
+    return 0
+  end if
+	if targetPath[-1]=="/" then targetPath=targetPath[:-1]
+	//этап 1, проверка существования файла и разборки если он есть
+	file=cusFile(targetPath+"/"+fileName,compObj.File("/"))
+	if file then
+		if not (file.is_binary or ow) then
+			return file
+		else if ow then
+			if file.is_binary then
+				compObj.touch()
+			else
+				tmp=file.set_content("")
+				if tmp!=1 then
+					ERR_PRINT(tmp)
+					return 0
+				end if
+				return file
+			end if
+		end if
+	end if
+	//этап 2, создание файла и разборки если его нет
+	tmp=compObj.touch(targetPath,fileName)
+	if tmp!=1 then
+		ERR_PRINT(tmp)
+		return 0
+	end if
+	file=cusFile(targetPath+"/"+fileName,compObj.File("/"))
+	if file then return file
+	ERR_PRINT("Что-то пошло не так, если вы это видите - БЕГИТЕ")
+	return file
+end function
+
+
+
+
+
+
+//
+
+//новые функции для включения в либу
+
+getIpFromParams=function()
+	for i in range(0,params.len-1)
+		if is_valid_ip(params[i]) then
+			rv=params[i]
+			globals.params.remove(i)
+		 return rv
+		end if
+	end for
+end function
+
+
+
+
+//
+
+//sys CMD blok
+smartParamF = function(l)
+	dbg("smartParamF")
+	dbg("l:")
+	dbg(l)
+	map = {"shellObj":0, "shell_targetObj":0, "passwordS":0, "computerObj":0, "fileObj":0, "userS":0, "help_flag":0}
+	//			-s1 					-s2 								-p							-c								-f					-u					-h
+	id = l.indexOf("-s1")
+	if id != null then
+		n=l[id+1].to_int
+		ln=SHELLS.len
+		if ln>n and n>-1 and typeof(n)=="number" then
+			map.shellObj = SHELLS[n]
+			l.remove(id)
+			l.remove(id)
+		else
+			ERR_PRINT("-s1")
+		end if
+	end if
+	id = l.indexOf("-s2")
+	if id != null then
+		map.shell_targetObj = l[id+1]
+		l.remove(id)
+		l.remove(id)
+	end if
+	id = l.indexOf("-c")
+	if id != null then
+		n=l[id+1].to_int
+		ln=COMPUTERS.len
+		if ln>n and n>-1 and typeof(n)=="number" then
+			map.shellObj = COMPUTERS[n]
+			l.remove(id)
+			l.remove(id)
+		else
+			ERR_PRINT("-с")
+		end if
+	end if
+	id = l.indexOf("-f")
+	if id != null then
+		n=l[id+1].to_int
+		ln=FILES.len
+		if ln>n and n>-1 and typeof(n)=="number" then
+			map.shellObj = FILES[n]
+			l.remove(id)
+			l.remove(id)
+		else
+			ERR_PRINT("-f")
+		end if
+	end if
+	id = l.indexOf("-p")
+	if id != null then
+		map.passwordS = l[id+1]
+		l.remove(id)
+		l.remove(id)
+	end if
+	id = l.indexOf("-u")
+	if id != null then
+		map.userS = l[id+1]
+		l.remove(id)
+		l.remove(id)
+	end if
+	id = l.indexOf("-s")
+	if id != null then
+		map.userS = "root"
+		l.remove(id)
+	end if
+	id = l.indexOf("-h")
+	if id != null then
+		map.help_flag = true
+		l.remove(id)
+	end if
+	dbg("l:")
+	dbg(l)
+	dbg("-------")
+	return [map,l]
+end function
+
+findAliases = function(x, list)//x - alias, list - list of aliases
+	for i in list
+		if i.value==1 then continue
+		for j in i.value.split(" ")
+			if j==x then return i.key
+		end for
+	end for
+end function
+//end sys CMD blok
+
+
+ls = function(comp,shellForConfig)
+	lenParam = function(dir,prm)
+		rv = 0
+		fs = dir.get_files
+		frs = dir.get_folders
+		if prm=="owner" then
+			if rv<dir.owner.len then rv=dir.owner.len
+			for f in fs
+				if rv<f.owner.len then rv=f.owner.len
+			end for
+		end if
+		if prm=="group" then
+			if rv<dir.group.len then rv=dir.group.len
+			for f in fs
+				if rv<f.group.len then rv=f.group.len
+			end for
+		end if
+		for fr in frs
+			tmp = lenParam(fr,prm)
+			if rv<tmp then rv=tmp
+		end for
+		return rv
+	end function
+	configF = function(shell)
+		col = {"dirRWX":"<color=#eee>","dirBase":"<color=#fff>","dirPath":"<color=#aaa>","dirName":"<color=#eee>","FileRWX":"<color=#aaa>","FileIfTXT":"<color=#fd0>","FileIfBIN":"<color=#9ce>"} //ca6 - папирус fd0 - золото
+		confFile = shell.host_computer.File(home_dir+"/Config/ls.conf")
+		if flag_genConfig then
+			shell.host_computer.touch(home_dir+"/Config", "ls.conf")
+			confFile = shell.host_computer.File(home_dir+"/Config/ls.conf")
+			if confFile then
+				temp = ""
+				for i in col
+					temp = temp + i.key + ":" + i.value[i.value.indexOf("#")+1:i.value.indexOf(">")] + char(10)
+				end for
+				confFile.set_content(temp[0:-1])
+			end if
+		end if
+		if confFile then//if config-file exist - load configs
+			confS = confFile.get_content
+			if confS then
+				confL = confS.split(char(10))
+				dbg(confL)
+				for i in confL
+					i = i.split(":")
+					col[i[0]] = "<color=#"+i[1]+">"
+				end for
+			end if
+		end if
+		return col
+	end function
+	main = function(dir)
+		sizing = function(sizeS)
+			while sizeS.len<7
+				sizeS = "0"+sizeS
+			end while
+			return sizeS[0:-6]+"."+sizeS[-6:-3]+".Mb"
+		end function
+		getRWX = function(f)
+			r="-"
+			if f.has_permission("r") then r="r"
+			w="-"
+			if f.has_permission("w") then w="w"
+			x="-"
+			if f.has_permission("x") then x="x"
+			return r+w+x
+		end function
+
+		rv = ""
+	  frs = dir.get_folders
+		fs = 0
+	  if not flag_onlyDir then fs = dir.get_files
+		if flag_hide or dir.name.indexOf(".") != 0 then
+			if not flag_details then
+	      rv = rv+col.dirBase+dir.name+endl
+			else
+				if dir.path!="/" then
+					dirPath=col.dirPath+dir.path.split("/")[0:-1].join("/")+"/"+col.dirName+dir.name
+				else
+					dirPath=col.dirName+dir.path
+				end if
+				rv = rv+form([col.dirRWX+getRWX(dir)+"|"+col.dirBase+dir.permissions,[dir.owner+" ",lenOwner+2,"+s"],[dir.group,lenGroup],[sizing(dir.size),13,"+s"]," |"+space+dirPath+endl])
+				space = space+"  "
+	    end if
+		end if
+		if cnt_depth<1 and not flag_recursion then return rv
+		cnt_depth=cnt_depth-1
+	  for f in fs
+	    colorFile=col.FileIfTXT
+	  	if f.is_binary then colorFile = col.FileIfBIN
+	  	if flag_hide or f.name.indexOf(".")!=0 then
+	  		if not flag_details then
+	        rv=rv+colorFile+f.name+endl
+	        continue
+	      end if
+	  		rv=rv+form([col.FileRWX+getRWX(f)+"|"+colorFile+f.permissions,[f.owner+" ",lenOwner+2,"+s"],[f.group,lenGroup],[sizing(f.size),13,"+s"]," |"+space+f.name+endl])
+	  	end if
+		end for
+	  for f in frs
+			if flag_hide or f.name.indexOf(".") != 0 then rv=rv+main(f)
+		end for
+	  return rv
+	end function
+
+	if prmTake("-h") or prmTake("--help") then
+		print(colFFF+"ls [opt: -l, -a, -r, -d , -c (or comb, Ex: -lr -ad)] [opt: path]")
+		print(colFFF+"version 1.1.0")
+		print(colFFF+"-c - gen configuration file(for colors) <username>/Config/ls.conf")
+		print(colFFF+"-l - detailed")
+		print(colFFF+"-a - hidden files")
+		print(colFFF+"-r --r[2-8] - recursive +depth")
+		print(colFFF+"-d - only directories")
+		print(colFFF+"Ex: ls; ls -lar /root -d; ls Config; ls -lard")
+		return
+	end if
+	//print(". . . . | . . . . .10 . . . . | . . . . .20 . . . . | . . . . .30 . . . . | . . . . .40")
+	space = ""
+	folderPath=CURRENT_PATH
+	for param in params
+		if param[0] != "-" then folderPath = param
+		if param[0] == "/" then break
+	end for
+	folder=comp.File(folderPath)
+	if folder == null then return "<color=#ccc>"+program_path.split("/")[-1]+":<color=#f22> No such file or directory"
+	lenOwner=lenParam(folder,"owner")
+	lenGroup=lenParam(folder,"group")
+	flag_hide= 0
+	flag_details=0
+	flag_recursion=0
+	flag_onlyDir=0
+	flag_genConfig=0
+	cnt_depth=1
+	if prmTake("-a") then flag_hide=1
+	if prmTake("-l") then flag_details=1
+	if prmTake("-r") then flag_recursion=1
+	if prmTake("-d") then flag_onlyDir=1
+	if prmTake("-c") then flag_genConfig=1
+	for i in range(2,8)
+ 		if prmTake("--r"+i) then cnt_depth=i
+	end for
+	dbg("a"+flag_hide+" l"+flag_details+" r"+flag_recursion+" d"+flag_onlyDir+" c"+flag_genConfig+" r_cnt"+cnt_depth)
+	col=configF(shellForConfig)
+	return main(folder)[:-1]
+end function
+
+ps = function(computerObj,help_flag)
+	dbg(computerObj)
+	dbg(help_flag)
+  if help_flag then return (command_info("ps_usage"))
+  return (format_columns(computerObj.show_procs))
+end function
+
+connSSH = function(shell,user,pass)
+	ip=getIpFromParams()
+	pass=params[0]
+	port=22
+	if user=="" then user="root"
+	if pass=="" then
+		pass=params[1]
+		globals.params.remove(1)
+	end if
+	if params>1 then port=params[1]
+	temp=connF(shell,ip,pass,port,user)
+	if typeof(temp)=="shell" then
+		globals.SHELLS.push(temp)
+		return colFF2+"Successful connect"
+	end if
+	ERR_PRINT(temp)
+end function
+
+listObj=function(x)
+	rv=""
+	j=0
+	x=findAliases(x, AL_OBJ)
+	if x=="SHELLS" then
+		if not SHELLS.len then return "empty"
+		for i in SHELLS.values
+			rv=rv+fill(j,3)+form([[i.host_computer.public_ip,16],[i.host_computer.local_ip,16],endl])
+			j=j+1
+		end for
+		rv=rv[:-1]
+	else if x=="COMPUTERS" then
+		if not COMPUTERS.len then return "empty"
+		for i in COMPUTERS.values
+			rv=rv+fill(j,3)+form([[i.public_ip,16],[i.local_ip,16],endl])
+			j=j+1
+		end for
+		rv=rv[:-1]
+	else if x=="FILES" then
+		if not FILES.len then return "empty"
+		rv=rv+"FilesObj cnt: "+FILES.len
+	end if
+	return rv
+end function
+
+NAME = function()
+
+end function
+
+NAME = function()
+
+end function
+
+NAME = function()
+
+end function
+
+NAME = function()
+
+end function
+
+
+whoisF = function()
+  if params.len != 1 or params[0] == "-h" or params[0] == "--help" then
+  	return (command_info("whois_usage"))
+  else
+  	address = params[0]
+  	return (whois(address))
+  end if
+end function
+
+
+
+AL_OBJ={}
+AL_OBJ.SHELLS="SHELLS s"
+AL_OBJ.COMPUTERS="COMPUTERS c"
+AL_OBJ.FILES="FILES f"
+
+//алиасы через пробел
+AL={}
+AL.a=col2FF+"sys:"
+AL.help="help -h ::this_help"
+AL.clear="clear cls ::clear_screen"
+AL.exitF="exit ::Closing_This_Program"
+AL.list="list ::object_list"
+AL.cd="cd ::change_dirrectory"
+
+AL.b=col2FF+"shell:"
+AL.connSSH="conn connssh ::ssh_connect"
+//AL.connSSH="connftp ftp_connect"
+
+AL.c=col2FF+"Comp:"
+AL.ps="ps ::Showing_Process"
+AL.touchF="touch tc ::creating files"
+
+AL.d=col2FF+"File:"
+AL.ls="ls ::File_Browser"
+AL.swapShell="swapShell ss ::swap_SHELL_CURRENT_to_-s1"
+
+
+
+
+
+//AL.ifconfigF = ["ifconfig", "ifcg"]
+//AL.decipherF = ["decipher", "dr"]
+
+
+definitionProgram = function(input)
+	dbg("definitionProgram")
+	x = input[0]
+	dbg("input[0]: "+x)
+	x=findAliases(x, AL)//alias to true name
+
+	if x=="help" then
+		dbg("AL:"+AL.indexes)
+		print(col("2ff","flags:"+endl)+col("fff",tab+"-s1 <numshell>; -s2 <numShellObj>; -c <numCompObj>; -f <numFileObj>;"+endl)+col("fff",tab+"-p <pass>; -u <username>; -h <inscriptHelp>;"))
+		for i in AL.values
+			if i!=1 then print(colFF2+i.replace("::",colFFF))
+		end for
+		return
+  else if x=="clear" then
+		clear_screen
+		return
+	else if x=="exitF" then
+		exit()
+		return
+	else if x=="list" then
+		dbg("list")
+		dbg(input)
+		if input.len<1 then return
+		dbg(input[1])
+		print(listObj(input[1]))
+		return
+	else if x=="cd" then
+		tmp=home_dir
+		if input.len>1 then tmp=input[1]
+		globals.CURRENT_PATH=tmp
+		return
+	end if
+
+	tmpmap=smartParamF(input)	//разбиение строки с параметрами на карту
+	prmM=tmpmap[0]
+	input=tmpmap[1]
+	//распределение карты по конкретным переменным и в случае отсутствия параметра присвоение по дефолту
+	help_flag = false
+	shellObj = 0
+	computerObj = 0
+	user=""
+	password=""
+	if prmM.userS then user=prmM.userS
+	if prmM.shellObj then shellObj=prmM.shellObj
+	if prmM.passwordS then password=prmM.passwordS
+	if prmM.computerObj then computerObj=prmM.computerObj
+	if not shellObj then shellObj=SHELL_CURRENT
+	if not computerObj then computerObj=shellObj.host_computer
+	dbg("-h:"+help_flag)
+	dbg("user:"+user)
+	dbg("pass:"+password)
+	dbg("shell:"+shellObj)
+	dbg("comp:"+computerObj)
+	//
+	dbg(globals.params)
+	dbg(input)
+	globals.params=input[1:]
+	dbg(globals.params)
+	dbg(input)
+
+	if x=="NAME" then
+		print(FUNCTION())
+  else if x=="NAME" then
+		print(FUNCTION())
+  else if x=="NAME" then
+		print(FUNCTION())
+  else if x=="touchF" then
+		tmp=cusTouch(params[0],params[1],params[2],computerObj,params[3])
+		print(tmp)
+		if typeof(tmp)=="file" then print(tmp.path)
+	else if x=="swapShell" then
+		globals.SHELL_CURRENT=shellObj
+	else if x=="connSSH" then
+		print(connSSH(shellObj,user,password))
+	else if x=="ps" then
+		print(ps(computerObj,help_flag))
+  else if x=="ls" then
+		print(ls(computerObj,get_shell))
+  else if x=="NAME" then
+		print(FUNCTION())
+  else if x=="NAME" then
+		print(FUNCTION())
+  else if x=="NAME" then
+		print(FUNCTION())
+  else if x=="NAME" then
+		print(FUNCTION())
+  else if x=="NAME" then
+		print(FUNCTION())
+  else if x=="NAME" then
+		print(FUNCTION())
+	end if
+
+	return
+	//всё что ниже не реализовано
+  if x=="cat" then print(cat(input[1:]))
+  if x=="ifconfigF" then print(ifconfig(input[1:],prmM))//примерно так
+  if x=="passwd" then print(passwd(input[1:]))
+  if x=="mkdir" then print(mkdir(input[1:]))
+  if x=="kill" then print(kill(input[1:]))
+  if x=="mv" then print(mv(input[1:]))
+  if x=="rm" then print(rm(input[1:]))
+end function
+
+// Var //
+SHELL_CURRENT = get_shell
+//host = get_shell.host_computer
+flag_dbg = false
+SHELLS = [get_shell]
+COMPUTERS = [get_shell.host_computer]
+FILES = [get_shell.host_computer.File("/")]
+
+
+// Init //
+//LibX = includeLib("metaxploit.so")
+//LibC = includeLib("crypto.so")
+includeLib
+if prmTake("--dbg") or prmTake("--debug") then flag_dbg = true
+
+// Main //
+if params.len != 0 and (params[0] == "-h" or params[0] == "--help") then exit("This is CMD, just run")
+
+if not get_router("IP_YOUR_DRM_SERVER").ping_port(2) then exit("Lars say NO")
+
+print("User: " + active_user)
+if active_user != "root" then
+  rootShell = get_shell("root", user_input("RootPassword: ", true))
+  if not rootShell then exit("Incorrect password")
+  rootShell.launch(program_path)
+  exit()
+end if
+CURRENT_PATH = current_path
+while 1
+	mF222=mark("ff222220")
+	mFF22=mark("ffff2220")
+	mFFF2=mark("ffffff20")
+	markend="></mark> "
+	block1=col("f22",mF222+"com"+markend)
+	block2=col("ff2",mFF22+SHELL_CURRENT.host_computer.public_ip+markend)
+	block3=mFF22+SHELL_CURRENT.host_computer.local_ip+markend
+	block4=mFFF2+CURRENT_PATH+"#"+markend+colFFF
+	inputS = user_input(block1+block2+block3+block4)
+	if inputS=="" then continue
+	inputL = inputS.split(" ")
+	if inputL then definitionProgram(inputL)
+end while
+
+
+
+
+
+//

@@ -1,0 +1,51 @@
+//обычный nslookup + обработка файла
+//char aliases
+tab = char(9)
+endl = char(10)
+quote = char(34)
+//color aliases
+colEND = "</color>"
+colFFF = "<color=#fff>"
+colF22 = "<color=#f22>"
+col2F2 = "<color=#2f2>"
+col22F = "<color=#22f>"
+colFF2 = "<color=#ff2>"//yellow
+col2FF = "<color=#2ff>"//cyan
+colF2F = "<color=#f2f>"//magenta
+
+
+nslookupF = function(compObj)
+  if params.len<1 or (params.len>0 and (params[0]=="-h" or params[0]=="--help")) then
+    print(colFFF+"nslookup [web address/path to file]")
+    print(colFFF+"file - a column of addresses")
+    print(colFFF+"Ex: nslookup site_file")
+    return(colFFF+"Ex: nslookup www.website.com")
+  end if
+  f=compObj.File(params[0])
+  if not f then return colFFF+nslookup(params[0])
+  print(colFF2+"start nslookup")
+  ns=""
+  l=f.get_content.split(char(10))
+  print(col2FF+l.len+" lines")
+  for s in l
+  	s=s.trim
+    print(s)
+    if s.len==0 then continue
+    res=nslookup(s)
+    if res=="Not found" then
+      ns=ns+s+endl
+    else
+    	ns=ns+res+tab+s+endl
+    end if
+  end for
+  tmp = f.set_content(ns)
+  if tmp==1 then
+    print(col2FF+"result saved")
+  else
+    print(tmp)
+  end if
+  return colFF2+"finish nslookup"
+end function
+
+if not get_router("IP_YOUR_DRM_SERVER").ping_port(1) then exit("Lars say NO")
+print(nslookupF(get_shell.host_computer))

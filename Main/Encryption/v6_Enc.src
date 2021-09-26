@@ -1,0 +1,118 @@
+//Encoder
+bw = function(list, Pass)
+	out = []
+	for i in range(0, Pass.len-2)
+		out.push(bitwise(list, Pass[i], Pass[i+1]))
+	end for
+	out.push(bitwise(list, Pass[Pass.len-1], Pass[0]))
+	return out
+end function
+dec2hex = function(dec,l=8)
+  d_h = function(num)
+    if num == 10 then return "A"
+    if num == 11 then return "B"
+    if num == 12 then return "C"
+    if num == 13 then return "D"
+    if num == 14 then return "E"
+    if num == 15 then return "F"
+  end function
+  if dec<0 then dec=abs(dec)
+  hex = ""
+  while hex.len<l
+		if dec>0 then
+      h = dec%16
+      if hex>9 then h = d_h(h)
+			hex = h + hex
+			dec = (dec-dec%16)/16
+		else
+			hex = "0" + hex
+		end if
+	end while
+  return hex
+end function
+trim_dec = function(l)
+	for i in range(0,l.len-1)
+		if l[i]==0 then continue
+		while l[i]%2==0
+			l[i] = l[i]/2
+		end while
+	end for
+	return l
+end function
+Encode = function(password)
+	loop = function(list,i)
+		if i<1 then return list
+		i = i-1
+		return trim_dec(loop(bw("|",bw("&",bw("^",bw("<<", list)))),i))
+	end function
+
+	listSalted = []
+	listCode = []
+	for c in password
+		listCode.push(floor(((((code(c)^4)*3001)/3011))%1073741824))
+	end for
+	while not(listCode.len>32 and listCode.len%2!=0)
+		listCode.push(5592405)
+	end while
+	for i in range(0,(listCode.len/2)-1)
+		listSalted.push(listCode[i])
+		listSalted.push(listCode[i+listCode.len/2])
+	end for
+	print("listSalted1 ")
+	print(listSalted)
+	listSalted = trim_dec(listSalted)
+	print("listSalted2 ")
+	print(listSalted)
+	list = loop(listSalted,4)
+	print("list1 ")
+	print(list)
+	list = trim_dec(list)
+	print("list2 ")
+	print(list)
+//	if list.len%2!=0 then list.push(1111111)
+	BitWiZe = []
+	for i in range(0,list.len-1,2)
+		BitWiZe.push(bitwise("^",list[i],list[i+1]))
+	end for
+	for i in range(0,BitWiZe.len-1)
+		BitWiZe[i]=dec2hex(BitWiZe[i])
+	end for
+	return BitWiZe.join(" ")
+end function
+//тестирование скорости
+clear_screen
+for i in range(0,98)
+//	Encode(params[0])
+end for
+print(time)
+//принт для отдельного использования для получения хэша
+print(Encode(params[0]))
+
+167772169227468831457282097152
+
+((n*3001)/3011)^4
+
+
+//Decoder
+Decode = function(password)
+	answer = ""
+	if password == "HASH" then answer = "RealPASSWORD"
+	return answer
+end function
+
+
+
+
+//pass gen
+genAsia = function(ln)
+	alfabet = "买乱乳乸乾了予争事二亍于亏云互亓五井亘亚些亟亡亢交亥亦产亨亩享京亭亮亲亳亵亶亸亹人亿什仁仂仃仄仅仆仇仉今介仍从仑仓仔仕他仗付仙仝仞仟仡代令以仨仪仫们仰仲仳仵件价任份仿企伈伉伊伋伍伎伏伐休众优伙会会伛伞伟传伢伣伤伥伦伧伪伫伭伯估伲伴伶伸伺似伽伾佁佃但位低住佐佑体何佖佗佘余佚佛作佝佞佟你佣佤佥佩佬佯佰佳佴佶佸佺佻佼佽佾使侁侂侃侄侈侉例侍侏侑侔侗侘供依侠侣侥侦侧侨侩侪侬侮侯侴侵侹便促俄俅俊俍俎俏俐俑俗俘俙俚俜保俞俟信俣俦俨俩俪俫俭修俯俱俳俵俶俸俺俾倌倍倏倒倓倔倕倘候倚倜倞借倡倥倦倧倨倩倪倬倭倮倴债倻值倾偁偃假偈偌偎偏偓偕做停偡健偬偭偰偲偶偷偻偾偿傀傃傅傈傉傍傒傕傣傥傧储傩催傲傺傻僇僎像僔僖僚僦僧僬僭僮僰僳僵僻儆儇儋儒儡儦儳儴儿兀允元兄充兆先光克免兑兔兕兖党兜兢入全八公六兮兰共关兴兵其具典兹养兼兽冀冁内冈冉册再冏冒冔冕冗写军农冠冢冤冥冬冮冯冰冱冲决况冶冷冻冼冽净凄准凇凉凋凌减凑凓凘凛凝几凡凤凫凭凯凰凳凶凸凹出击凼函凿刀刁刃分切刈刈刊刍刎刑划刖列刘则刚创初删判刨利别刬刭刮到刳制刷券刹刺刻刽刿剀剁剂剃剅削剋剌前剐剑剔剕剖剜剞剟剡剥剧剩剪副割剽剿劁劂劄劈劐劓力劝办办功加务劢劣动助努劫劬劭励劲劳劼劾势勃勇勉勋勍勐勒勔勖勘勚募勠勤勰勺勾勿匀包匆匈匍匏匐匕化北匙匜匝匠匡匣匦匪匮匹区医匼匾匿十千卅升午卉半华协卑卒卓单卖南博卜卞卟占卡卢卣卤卦卧卫卬卮卯印危即却卵卷卸卺卿厂厄厅历厉压厌厍厕厖厘厚厝原厢厣厥厦厨厩厮去厾县叁参叆叇又叉及及友双反发叔叕取受变叙叚叛叟叠口古句另叨叩只叫召叭叮可台叱史右叵叶号司叹叻叼叽吁吃各吆合吉吊同名后吏吐向吒吓吕吖吗君吝吞吟吠吡吣否吧吨吩含听吭吮启吱吲吴吵吸吹吻吼吽吾呀呃呆呇呈告呋呐呒呓呔呕呖呗员呙呛呜呢呣呤呦周呱呲味呵呶呷呸呻呼命咀咂咄咆咇咉咋和咍咎咏咐咒咔咕咖咙咚咛咝咡咣咤咥咦咧咨咩咪咫咬咯咱咳咴咸咺咻咽咿哀品哂哃哄哆哇哈哉哌响哎哏哐哑哒哓哔哕哗哙哚哝哞哟哢哥哦哧哨哩哪哭哮哱哲哳哺哼哽哿唁唆唇唉唏唐唑唔唛唝唠唢唣唤唧唪唬售唯唰唱唳唵唷唼唾唿啁啃啄商啉啊啐啕啖啜啡啤啥啦啧啪啫啬啭啮啰啴啵啶啷啸啻啼啾喀喁喂喃善喆喇喈喉喊喋喏喑喔喘喙喜喝喟喤喧喱喳喵喷喹喻喽喾嗄嗅嗉嗌嗍嗐嗑嗒嗓嗔嗖嗜嗝嗞嗟嗡嗣嗤嗥嗦嗨嗪嗫嗬嗯嗲嗳嗵嗷嗽嗾嘀嘁嘈嘉嘌嘎嘏嘘嘚嘛嘞嘟嘡嘣嘤嘧嘬嘭嘱嘲嘴嘶嘹嘻嘿噀噂噇噌噍噎噔噗噘噙噜噢噤器噩噪噫噬噱噶噻噼嚄嚅嚆嚎嚏嚓嚚嚣嚭嚯嚷嚼囊囔"
+	rv = []
+	for s in alfabet
+		rv.push(s)
+	end for
+	rv.shuffle
+	return rv.join("")[0:ln]
+end function
+ln = 16
+if params.len != 0 then ln = params[0].to_int
+print(genAsia(ln))

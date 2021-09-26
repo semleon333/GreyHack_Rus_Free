@@ -1,0 +1,102 @@
+//The EXCUSE.ME Virus
+//use at your own risk i will not take responcabily for your actions
+//this was made for eductational purposes only.
+//-UNKNOWN
+
+print("Searching for Vuln Computers....")
+
+mx = include_lib("/lib/metaxploit.so")
+crypto = include_lib("/lib/crypto.so")
+
+
+infectshell = get_shell.host_computer
+if not infectshell.File("/home/guest/.infected") then
+	infect = get_shell.host_computer
+	users = infectshell.File("/home").get_folders
+	for user in users
+		infect.File(current_path+"/EXCUSE.ME.TXT").copy("/home/" +user.name + "/Desktop/", "EXCUSE.ME.TXT")
+	end for
+	infect.touch("/home/guest/", ".infected")
+end if
+
+
+
+hack = function(ip,port)
+	
+	r=get_router(ip)
+	
+	netsess = mx.net_use(ip,port)
+	if not netsess then
+	else
+		lib = netsess.dump_lib
+		addrs = mx.scan(lib)
+		
+		exhandler = function(addr,unsec,)
+			ex = lib.overflow(addr,unsec, "EXCUSE.ME")
+			
+			if typeof(ex) == "shell" then
+				users = ex.host_computer.File("/home").get_folders
+				
+				for user in users
+					sourceshell = get_shell
+					uploaded = sourceshell.scp(current_path + "/EXCUSE.ME.TXT", "/home/" + user.name + "/Desktop/", ex)
+				end for
+			end if
+			
+			
+		end function
+		
+		
+		for addr in addrs
+			
+			info = mx.scan_address(lib,addr)
+			info = info.remove("decompiling source...").remove("searching unsecure values...")
+			info = info[2:]
+			
+			while info.indexOf("Unsafe check: ") != null or info.indexOf("<b>") != null or info.indexOf("</b>") != null
+				info = info.remove("Unsafe check: ").remove("<b>").remove("</b>")
+			end while
+			
+			while info.indexOf("loop in array ") != null
+				info = info.replace("loop in array ", "<tag>")
+			end while
+			
+			while info.indexOf("string copy in ") != null
+				info = info.replace("string copy in ", "<tag>")
+			end while
+			
+			while info.indexOf("<tag>") != null
+				a = info.indexOf("<tag>") + 5
+				info = info.remove(info[:a])
+				str = info[:info.indexOf(".")]
+				exhandler(addr,str)
+			end while
+		end for
+		
+	end if	
+end function
+
+amount = 1
+
+while amount == 1
+	num1 = range(1, 255)
+	num1.shuffle
+	num2 = range(1, 255)
+	num2.shuffle
+	num3 = range(1, 255)
+	num3.shuffle
+	num4 = range(1, 255)
+	num4.shuffle
+	
+	target = num1[0] + "." + num2[0] + "." + num3[0] + "." + num4[0]
+	target_router = get_router(target)
+	
+	if not target_router then
+	else
+		kernel = mx.net_use(target_router.public_ip).dump_lib.version
+		hack(target, 22)
+	end if
+end while
+
+
+

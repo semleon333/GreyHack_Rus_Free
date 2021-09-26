@@ -1,0 +1,55 @@
+// [!] Запускать от root'a
+//	Чистим /root/Config
+//	Чистим /root/.Trash
+//	Чистим /home/USER_NAME/Config
+//	Чистим /home/USER_NAME/.Trash
+//	Чистим /var/system.log
+HOST = get_shell.host_computer
+
+DeleteAll = function( PATH )
+	FILE = HOST.File( PATH )
+	print( FILE.path )
+	Delete = FILE.get_files
+	for file in Delete
+		file.delete
+	end for
+
+	Delete = FILE.get_folders
+	for file in Delete
+		file.delete
+	end for
+end function
+
+ClearUser = function( UserPath )
+	if null != UserPath or typeof( UserPath ) == "string" or "" != UserPath then
+		DeleteAll( UserPath + "/Config" )
+		DeleteAll( UserPath + "/.Trash" )
+	else
+		print( "[!] ClearUser: Invalid parameter." )
+	end if
+end function
+
+HomeFolder = HOST.File( "/home" )
+if null != HomeFolder then
+	if HomeFolder.is_folder then
+		Folders = HomeFolder.get_folders
+		for Folder in Folders
+			ClearUser( "/" + HomeFolder.name + "/" + Folder.name )
+		end for
+		ClearUser( "/root" )
+	
+		HomeFolder = HOST.File( "/etc/passwd" )
+		if null != HomeFolder then
+			HomeFolder.delete
+		end if
+	
+		HomeFolder = HOST.File( "/var/system.log" )
+		if null != HomeFolder then
+			HomeFolder.delete
+		end if
+	else
+		print("[???] File is not a folder.")
+	end if
+else
+	print( "[???] File does not exist." )
+end if

@@ -1,0 +1,310 @@
+
+//
+
+ERROR = function(str)
+	print("<color=#FF2222><b>  ERROR: </b></color>" + str)
+end function
+
+includeLib = function(libName)
+	paths = [current_path, "/lib", "/bin", "/usr/bin"]
+	for i in paths
+		lib = include_lib(i + "/" + libName)
+		if lib then return lib
+	end for
+	ERROR("Library not found: " + libName)
+	return false
+end function
+
+padSpaces = function(s, l, p=" ")
+	if typeof(s) == "number" then s = s + ""
+	if s.len >= l then return s
+	padString = ""
+	c = l - s.len
+	while c > 0
+		padString = padString + p
+		c = c - 1
+	end while
+	return (s+padString)
+end function
+
+get_choice = function(choices, default = -1)
+	c = 0
+	for choice in choices
+		if c == 0 then
+			print("<b>" + choices[0] + "</b>")
+		else
+			selString = "<b>[" + c + "]</b>"
+			print(padSpaces(selString, 12) + choices[c])
+		end if
+		c = c + 1
+	end for
+	if default > -1 then
+		prompt = "[default="+default+"] > "
+	else
+		prompt = "> "
+	end if
+	while 1
+		user_choice = user_input(prompt)
+		if user_choice.len == 0 and default > -1 then return default
+		user_choice = user_choice.to_int
+		if not typeof(user_choice) == "number" or user_choice < 1 or user_choice >= c then
+			ERROR("Not a valid choice")
+			continue
+		end if
+		return user_choice
+	end while
+end function
+
+findUnlockedRWString = function(readPerm, writePerm)
+	returnValue = ""
+	if readPerm then returnValue = returnValue + "R"
+	if writePerm then returnValue = returnValue + "W"
+	return returnValue
+end function
+
+findUnlocked = function(dirPtr)
+	directories = dirPtr.get_folders
+	files = dirPtr.get_files
+	if dirPtr.has_permission("w") then print("Directory WRITE <b>" + dirPtr.path +"</b>")
+	if files.len > 0 then
+		for file in files
+			if not findUnlockedRWString(file.has_permission("r"), file.has_permission("w")) == "" then
+				print("File " + findUnlockedRWString(file.has_permission("r"), file.has_permission("w")) + " <b>" + file.path + "</b>")
+			end if
+		end for
+	end if
+	if directories.len > 0 then
+		for directory in directories
+			findUnlocked(directory)
+		end for
+	end if
+end function
+
+getColorString = function(fileObj)
+	if fileObj.has_permission("r") and fileObj.has_permission("w") then return("88FFFF")
+	if fileObj.has_permission("r") then return("8888FF")
+	if fileObj.has_permission("w") then return("88FF88")
+	return("FF8888")
+end function
+
+browseFiles = function(dirPtr)//, hostInfo = ""
+	while not dirPtr.parent == null
+		dirPtr = dirPtr.parent
+	end while
+	rootPtr = dirPtr
+	while 1
+		directories = dirPtr.get_folders
+		files = dirPtr.get_files
+		choices = ["\n\n<b>Contents of " + dirPtr.path + ":</b>\n     <color=#" + getColorString(dirPtr) + ">" + dirPtr.permissions + padSpaces("", 19) + "<.>" ]
+		isRoot = (dirPtr.path == "/")
+
+		if not isRoot then choices.push("<color=#"+getColorString(dirPtr.parent)+">" + dirPtr.parent.permissions + "                   <..></color>")
+		for directory in directories
+			choices.push("<color=#"+getColorString(directory)+">" + directory.permissions + " " + padSpacesRight(directory.owner, 8, " ") + " " + padSpaces(directory.group, 8, " ") + " ./" + padSpaces(directory.name, 19, ".") +"<dir></color>")
+		end for
+		if files.len > 50 then
+			files = files[0:49]
+			print("Possible file bomb detected. Only showing the first 50 files.")
+		end if
+		for file in files
+			binString = "<binary>"
+			if not file.is_binary then binString = "<text>"
+			choices.push("<color=#"+getColorString(file)+">" + file.permissions + " " + padSpacesRight(file.owner, 8, " ") + " " + padSpaces(file.group, 8, " ") + " " + padSpaces(file.name, 20, ".") + "." + padSpaces(binString, 9) + file.size + " bytes</color>")
+		end for
+
+		choices.push("--- Stop browsing files ---")
+		choice = get_choice(choices, choices.len-1)
+		if choice == choices.len-1 then break
+
+		if (not isRoot and choice == 1) then
+			// The user has chosen to back up a directory
+			dirPtr = dirPtr.parent
+		else if (directories.len > 0 and isRoot and choice <= directories.len) or (directories.len > 0 and not isRoot and choice <= (1+directories.len)) then
+			// The user has chosen a directory
+			if isRoot then
+				dirPtr = directories[choice-1]
+			else
+				dirPtr = directories[choice-2]
+			end if
+		else if (file.len > 0 and isRoot and choice > directories.len) or (file.len > 0 and not isRoot and choice > (directories.len+1)) then
+			filePtr = null
+			if isRoot then
+				filePtr = files[choice - directories.len - 1]
+			else
+				filePtr = files[choice - directories.len - 2]
+			end if
+			choicesb = ["\n\n<b>What would you like to do with this file?"]
+			choicesb.push("Display contents")
+			choicesb.push("Download file")
+			choicesb.push("Over-write file")
+			choicesb.push("Delete")
+			choicesb.push("Append")
+			choicesb.push("Scan for and crack passwords")
+			//choicesb.push("Unlock all files from here down")
+			choicesb.push("Do nothing")
+			choiceb = get_choice(choicesb, choicesb.len-1)
+			if choiceb == choicesb.len-1 then break
+			if choiceb == 1 or choiceb == 2 then
+				if filePtr.get_content then
+
+					if choiceb == 1 then
+						print("\n\n<b>Contents of file: " + filePtr.name + "</b>")
+						print(filePtr.get_content)
+					else
+						host.touch(home_dir + "/Downloads", filePtr.name)
+						print("Saving file to: " + home_dir + "/Downloads/" + filePtr.name)
+						x = host.File(home_dir + "/Downloads/" + filePtr.name).set_content(filePtr.get_content)
+						if(x == 1) then
+							print("File downloaded successfully.")
+						else
+							ERROR(x)
+						end if
+					end if
+
+				else
+					ERROR("Could not read the contents of this file - Check permissions and file type.")
+				end if
+
+			else if choiceb == 3 then
+				x = user_input("<b>Please enter what you would like to replace the contents of this file with.</b>\n")
+				x = filePtr.set_content(x)
+				if (x == true) then
+					print("File overwritten successfully.")
+				else
+					ERROR(x)
+				end if
+			else if choiceb == 4 then
+				if get_yesno(false, "Confirm deletion") then
+					x = filePtr.delete
+					if x == "" then
+						print(" .. deleted successfully.")
+					else
+						ERROR(x)
+					end if
+				end if
+			else if choiceb == 5 then
+				if not filePtr.get_content then
+					ERROR("Could not read the contents of this file - Check permissions and file type.")
+					continue
+				else
+					print("Scanning contents...")
+					crackPasswordFile(filePtr)
+					print("Passwords saved in <b><i>" + home_dir + "/crackedPasswords.txt</b></i>")
+				end if
+			else if choiceb == 6 then
+				x = user_input("<b>Please enter what you would like to add to the contents of this file.</b>\n")
+				x = filePtr.set_content(filePtr.get_content + "\n" + x)
+				if (x == true) then
+					print("File appended successfully.")
+				else
+					ERROR(x)
+				end if
+			end if
+		end if
+	end while
+end function
+
+expFile = function()
+	while 1
+		choices = ["\n\n<b>You have unlocked file access.  You can:</b>"]
+		choices.push("Browse Files")
+		choices.push("Crack passwd")
+		choices.push("Crack Bank.txt")
+		choices.push("Crack Mail.txt")
+		choices.push("Scan machine for vulnerable directories and files")
+		choices.push("Nothing.")
+		choice = get_choice(choices, choices.len-1)
+		if choice == choices.len-1 then break
+		if choice == 1 then	browseFiles(exploitObj)
+		if choice == 2 then
+			while exploitObj.parent
+				exploitObj = exploitObj.parent
+			end while
+			crackAllFiles(exploitObj, "passwd")
+		end if
+		if choice == 3 then
+			while exploitObj.parent
+				exploitObj = exploitObj.parent
+			end while
+			crackAllFiles(exploitObj, "Bank.txt")
+		end if
+		if choice == 4 then
+			while exploitObj.parent
+				exploitObj = exploitObj.parent
+			end while
+			crackAllFiles(exploitObj, "Mail.txt")
+		end if
+		if choice == 5 then
+			while exploitObj.parent
+				exploitObj = exploitObj.parent
+			end while
+			findUnlocked(exploitObj)
+		end if
+	end while
+end function
+
+crackAllFiles = function(filePtr, f="", flag=true)
+	subDirs = filePtr.get_folders
+	files = filePtr.get_files
+	for file in files
+		if file.has_permission("r") and not file.is_binary and file.name == f then crackPasswordFile(file)
+	end for
+	for dir in subDirs
+		crackAllFiles(dir, f,false)
+	end for
+end function
+
+crackPasswordFile = function(filePtr, hostInfo="")
+	lines = filePtr.get_content.split("\n")
+	for line in lines
+		results = []
+		line = split(line.trim, ":")
+		if line.len == 2 and line[1].len == 32 then
+			print("Cracking MD5 hash for user: <b><i>" + line[0] + "</b></i> in file: <b><i>" + filePtr.path + "</b></i>")
+			pw = LibC.decipher(line[1])
+			if pw then
+				print("Password: ["+pw+"]")
+				host.touch(home_dir, "crackedPasswords.txt")
+				f = host.File(home_dir+"/crackedPasswords.txt")
+				f.set_content(f.get_content + "\n" + padSpaces(line[0]+"@"+pw, 30) + " " + hostInfo + ": " + filePtr.name)
+			end if
+		end if
+	end for
+end function
+
+
+// Var //
+shell = get_shell
+host = get_shell.host_computer
+LibX = includeLib("metaxploit.so")
+LibC = includeLib("crypto.so")
+targetLibsName = ["init.so", "net.so", "kernel_module.so", "metaxploit.so", "crypto.so"]
+targetLibs = []
+libsForChoice = ["Get choise:"]
+
+// Main //
+if params.len != 0 and (params[0] == "-h" or params[0] == "--help") then exit("<program> | <memory> <string> | <param>")
+
+for libName in targetLibsName
+  lib = LibX.load("/lib/" + libName)
+  if lib then
+    targetLibs.push(lib)
+    libsForChoice.push(lib.lib_name + " " + lib.version)
+  end if
+end for
+choice = get_choice(libsForChoice)
+
+if params.len > 0 then
+  memory = params[0]
+  string = params[1]
+	if params.len == 2 then expObj = targetLibs[choice-1].overflow(memory, string)
+  if params.len == 3 then expObj = targetLibs[choice-1].overflow(memory, string, params[2])
+	metaLib = targetLibs[choice-1]
+	exploitObj = expObj
+  print(expObj)
+
+	if typeof(expObj) == "file" then expFile()
+
+	if typeof(expObj) == "shell" then expObj.start_terminal
+
+end if

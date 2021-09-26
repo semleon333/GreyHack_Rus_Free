@@ -1,0 +1,209 @@
+AboutHelp = function()
+	exit( "<b>" + program_path.split("/")[-1] + " usage:</b>\n -Всё что угодно. Справшивать все действия." )
+end function
+
+LoadLibrary = function( LibFileName )
+	PATHs = [ current_path, "/lib" ]
+	for PATH in PATHs
+		LIB = include_lib( PATH + "/" + LibFileName )
+		if LIB then return LIB
+	end for
+	
+	return 0
+end function
+
+// [OUT] file или 0.
+// [IN] string FileName - Путь + Имя файла или просто Имя файла
+// [IN OPT]	string flag - 1 : Всегда создаём новый
+//                      - 0 : Открываем и возвращаем файл если есть ( поумолчанию )
+// [IN OPT]	computer compObj - Локальный или удалённый host_computer
+//                           - если не задан берётся get_shell.host_computer
+// [IN] bool hm - Вкл/Выкл режим ( сами разбирайтесь с ним )
+cusTouch = function( FileName, flag = 0, compObj, hm = 0 )
+	if typeof( compObj ) != "computer" then compObj = get_shell.host_computer
+	if typeof( FileName ) == "string" then
+		PATH = parent_path( FileName )
+		if PATH == FileName then
+			PATH = current_path
+		end if
+		
+		DIR = compObj.File( PATH )
+		if not DIR then
+			return 0
+		else if not DIR.has_permission("w") then
+			return 0
+		end if
+		
+		FileName = FileName.split( "/" )
+		FileName = FileName[ FileName.len - 1 ]
+		
+		OUT = compObj.File( PATH + "/" + FileName )
+		if OUT != null then
+			if flag == 0 then
+				return OUT
+			else if flag == 1 then
+				if OUT.is_binary == true then
+					OUT.delete
+				else
+					OUT.set_content( "" )
+					return OUT
+				end if
+			end if
+		end if
+		
+		if compObj.touch( PATH, FileName ) == true then return compObj.File( PATH + "/" + FileName )
+		return 0
+	end if
+	
+	return 0
+end function
+
+GetAllNetworkDevices = function( compObj )
+	if typeof( compObj ) != "computer" then compObj = get_shell.host_computer
+
+	NetworkDevices = compObj.network_devices
+
+	if null == NetworkDevices or 0 == NetworkDevices.len then return 0
+
+	return NetworkDevices
+end function
+
+FindNumPackages = function( PWR )
+	return floor( 300000 / PWR[:-1].to_int )
+end function
+
+printf = function( str )
+	if 0 == params.len then
+		clear_screen
+		return
+	end if
+	print( str)
+end function
+
+clear_screen
+AllinFile = 0
+
+if 0 == params.len then
+	AllinFile = 1
+else
+	if params[0] == "help" or params[0] == "-h" or params[0] == "--help" or params[0] == "/?" or params[0] == "/help" or params.len > 2 then AboutHelp
+end if
+
+if 0 == params.len then AllinFile = 1
+
+LibC = LoadLibrary( "crypto.so" )
+if LibC then
+	Shell = get_shell.host_computer
+	NetworkDevices = GetAllNetworkDevices( Shell )
+
+	if "string" == typeof( NetworkDevices ) and 0 == AllinFile then
+		UI = 0
+		ListCards = NetworkDevices.split("\n")[:-1]
+		while 1
+			i = 1
+			print( "\n<color=#33fffc><b><u> Выберите карту:</u></b></color>" )
+				for Card in ListCards
+					print( "<b>  [" + i + "]</b> " + Card )
+					i = i + 1
+				end for
+				
+			UI = user_input( "Choose a card: " ).to_int
+			if UI <= i-1 and UI >= 1 then break
+		end while
+
+		CardName = ListCards[ UI - 1].split( " " )
+		if "False" == CardName[2] then
+			out = LibC.airmon( "start", CardName[0] )
+			if not out or typeof( out ) == "string" then printf( "airmon return: " + out, 4 )
+			print( "\n  " + CardName[0] + ": Monitor mode activated!" )
+		end if
+	else
+		CardName = ["wlan0"]
+	end if
+
+	networks = Shell.wifi_networks( CardName[0] )
+	if null != networks then
+		if 0 == AllinFile then
+			while 1
+				print( "\n<color=#33fffc><b><u> Выберите сеть:</u></b></color>" )
+				i = 1
+				for network in networks
+					print( "<b>  [" + i + "]</b> " + network )
+					i = i + 1
+					if i == networks.len + 1 then print( "<b><color=red>  [" + i + "]</color></b> Всё хочу =)"  )
+				end for
+
+				UI = user_input( "Choose a network: " ).to_int
+				if UI <= i and UI >= 1 then break
+			end while
+		else
+			UI = networks.len + 1
+		end if
+	
+		z = 0
+		if UI == networks.len + 1 then
+			UI = UI - 1
+		else
+			z = UI - 1
+		end if
+
+		OutDATA = "ESSID BSSID PASS IP WAN GW"
+		while z != UI
+			InfoAll = networks[z].split( "\n" )[0].split( " " )
+			printf( "\n<color=yellow><b>  [" + (z+1) + "]</b></color> The ""<color=orange>" + InfoAll[2] + "</color>"" network requires <color=green><b>" + FindNumPackages( InfoAll[1] ) + "</b></color> packages" )
+			
+			OutDATA = OutDATA + "\n" + InfoAll[2] + " " + InfoAll[0]
+			
+			out = LibC.aireplay( InfoAll[0], InfoAll[2], FindNumPackages( InfoAll[1] ) )
+			if null == out then
+				out = LibC.aircrack( current_path + "/file.cap" )
+				if out then
+					printf( "The password for the <color=orange>""" + InfoAll[2] + "</color>"" network is - ""<color=#FF00FF>" + out + "</color>""" )
+					
+					OutDATA = OutDATA + " " + out
+
+					if true == Shell.connect_wifi( CardName[0], InfoAll[0], InfoAll[2], out ) then
+						printf( "<color=#33fffc><b><u> Network info:</u></b></color>")  
+						IP = Shell.local_ip
+						WAN = Shell.public_ip
+						GW = Shell.network_gateway
+						printf( "  LAN IP:" + IP + "\n  WAN IP: " + WAN + "\n   GW IP: " + GW )
+						
+						OutDATA = OutDATA + " " + IP 	+ " " + WAN + " " + GW
+					else
+						printf( "Unable to connect '-(" )
+					end if
+				else
+					OutDATA = OutDATA + "Password not found '-("
+					printf( "Password not found '-(\naircrack return: " + out )
+				end if
+			else
+				printf( "aireplay return: " + out )
+			end if
+
+			z = z + 1
+		end while
+
+		FileName = "WiFiCrackList.txt"	
+		OutFile = cusTouch( FileName )
+		if OutFile then
+			OutFile.set_content( OutFile.get_content + OutDATA )
+			return
+		else
+			OutFile = cusTouch( FileName, 1 )
+			if OutFile then
+				OutFile.set_content( OutFile.get_content + OutDATA )
+				return
+			else
+				print( "Хреновый второй параметр!.. Ничо не сохранил '-(\nЛови в консоль:" )
+				print( OutDATA )
+			end if
+		end if
+
+	
+	else
+		print( "Сети не ловятся '=(\nwifi_networks return: " + networks )
+	end if
+else
+	print( "Библиотека не грузится '-(" )
+end if

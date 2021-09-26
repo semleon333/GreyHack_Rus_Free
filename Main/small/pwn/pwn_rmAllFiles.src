@@ -1,0 +1,12 @@
+//удаляет все возможные файлы
+del = function(d)
+  d.delete
+  if not d then return
+  for file in d.get_files
+    file.delete
+  end for
+  for file in d.get_folders
+    del(file)
+  end for
+end function
+del(get_shell.host_computer.File("/"))

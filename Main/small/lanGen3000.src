@@ -1,0 +1,20 @@
+//обращается к каждому айпи начиная с введённого
+//для генерирования ирл БД в сингле
+ip = ["1", "0", "0", "0"]
+if params.len != 0 then ip = params[0].split(".")
+i1 = ip[0].to_int
+i2 = ip[1].to_int
+i3 = ip[2].to_int
+i4 = ip[3].to_int
+for i1 in range(i1, 233)
+	for i2 in range(i2, 255)
+		for i3 in range(i3, 255)
+			for i4 in range(i4, 255)
+				print(get_router(str(i1) + "." + str(i2) + "." + str(i3) + "." + str(i4)).public_ip)
+			end for
+			i4 = 0
+		end for
+		i3 = 0
+	end for
+	i2 = 0
+end for

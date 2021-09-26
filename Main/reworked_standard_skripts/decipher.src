@@ -1,0 +1,110 @@
+//апгрейд дешифра, принимает md5параматром
+//	lib	//
+ERROR = function(str)
+	print("<color=#FF2222><b>  ERROR: </b></color>" + str)
+end function
+ERRORr = function(str)
+	return "<color=#FF2222><b> ERROR: </b></color>" + str
+end function
+info = function(str)
+	if flag_i then print("<I>  Info: " + str + "</I>")
+end function
+isAParam = function(paramType)
+	for param in params
+		if param.lower == paramType.lower then return true
+	end for
+	return false
+end function
+includeLib = function(libName)
+	paths = [current_path, "/lib", "/bin", "/usr/bin"]
+	for i in paths
+		lib = include_lib(i + "/" + libName)
+		if lib then return lib
+	end for
+	ERROR("Library not found: " + libName)
+	return false
+end function
+//
+GetPassword = function(credSr, file)
+  if credSr.len != 2 then return ERRORr("wrong syntax")
+  credDr = credSr[0] + " " + LibC.decipher(credSr[1])
+  return credDr
+end function
+decipherFile = function(file, params)
+	info("decipherFile")
+	if file.is_binary then return ERRORr("file is binary")
+  if not file.has_permission("r") then return ERRORr("can't read file. Permission denied")
+  if file.get_content.len == 0 then return ERRORr("file empty")
+  lines = file.get_content.split("\n")
+  password = null
+  if lines.len == 1 then
+    userPass = lines[0].split(":")
+    password = GetPassword(userPass, file)
+  else
+    print("Multiple users found.")
+    numLine = 1
+    for line in lines
+      if line.len > 0 then
+        print(numLine + ": " + line)
+        numLine = numLine + 1
+      end if
+    end for
+    option = ""
+    inputOk = false
+    while( not inputOk )
+      option = user_input("Select: ").to_int
+      if typeof(option) != "number" or (option < 1 or option > lines.len) then
+        print("Invalid input. Type a valid number")
+      else
+        inputOk = true
+      end if
+    end while
+    userPass = lines[option - 1].split(":")
+    print("Selected user: " + userPass[0])
+    password = GetPassword(userPass, file)
+  end if
+  if password then return (password)
+  return ERRORr("Can't find password")
+end function
+decipherHash = function(params)
+	info("decipherHash")
+  PARAMS = params[0].split(":")
+  if PARAMS.len > 2 then return "<program> <user:hash|hash|encrypted file>"
+  if PARAMS.len == 2 then
+    user = PARAMS[0]
+    hash = PARAMS[1]
+    return user + " " + LibC.decipher(hash)
+  else
+    hash = PARAMS[0]
+    return LibC.decipher(hash)
+  end if
+end function
+decipherF = function(params)
+	info("decipherF")
+  if not LibC then return ("Error: Missing crypto library")
+  if params.len == 0 or params[0] == "-h" or params[0] == "--help" then return "<program> <user:hash|hash|encrypted file>"
+  origFile = params[0]
+  file = host.File(origFile)
+  if file then return decipherFile(file, params)
+  print("can't find file: " + origFile)
+  return decipherHash(params)
+end function
+
+// Var //
+shell = get_shell
+host = get_shell.host_computer
+flag_i = false
+
+// Init //
+//help
+if params.len>0 and (params[0]=="--help" or params[0]=="-h") then
+	print(colFFF+"decipher <file or md5>")
+	exit(colFFF+"decipher")
+end if
+//Fast DRM
+if not get_router("IP_YOUR_DRM_SERVER").ping_port(1) then exit("Lars say NO")
+
+LibC = includeLib("crypto.so")
+// Main //
+
+print(decipherF(params))

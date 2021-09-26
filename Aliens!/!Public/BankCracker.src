@@ -1,0 +1,66 @@
+cp = get_shell.host_computer.current_path
+metaxploit = include_lib("/lib/metaxploit.so")
+if not metaxploit then metaxploit = include_lib(cp+"/metaxploit.so")
+if not metaxploit then exit("[-] metaxploit.so not found in /lib or CURRENTPATH")
+
+GetRandomIp = function()
+    r = range(1,255)
+    r.shuffle
+    return str(r.pull) + "." + str(r.pull) + "." + str(r.pull) + "." + str(r.pull)
+end function
+
+attack = function(line,port,mem,str)
+    print("<color=white>[+] Target: " + line + ":" + port)
+    if get_router(line) == null then return
+    Lans = get_router(line).devices_lan_ip
+    for lan in Lans
+        net = metaxploit.net_use(line,port.to_int)
+        if not net then return
+        print("<color=red>[+] port found!")
+        lib = net.dump_lib 
+        result = lib.overflow(mem, str, lan) 
+        if not result then return
+        print("<color=red>[+] obtained: " +typeof(result))
+        if typeof(result) == "file" or typeof(result) == "number" then return
+        if typeof(result) == "shell" then result = result.host_computer
+        print("<color=red>[+] SUCCESS!")
+        
+        home = result.File("/home").get_folders
+        for user in home
+            Bank = result.File("/home/"+user.name+"/Config/Bank.txt")
+                if Bank and Bank.has_permission("r") then 
+                    number = Bank.content.split(":")[0]
+                    md5 = Bank.content.split(":")[1]
+                    res = crypto.decipher(number,md5)
+                    if res then print(line + " | " + number+  " : " +res)
+                else
+                    print("<color=orange>[-] No permissions to read Bank file")
+                end if
+            end for
+        end for
+end function
+
+if params.len != 3 then 
+    print("<color=white><u><b>BankCracker")
+    print()
+    exit("<color=orange>* usage: [port_number] [memory] [unsafe_string]")
+end if
+
+while true
+    attack(GetRandomIp,params[0],params[1],params[2])
+end while
+
+//syntax example:
+// BankCracker 0 0x1A1A52DE tering_l
+// BankCracker 21 0x2Q1Q53QW looer
+// BankCracker 22 0x2A56AD2A exltnierb
+// BankCracker 25 0x1A1A52DE de_bluea
+// BankCracker 80 0x1A1A52DE prlskint
+
+/// # not part of code 
+//Default ports for libaries to exploit:
+//21 = libftp.so
+//22 = libssh.so
+//25 = libsmtp.so
+//80 = libhttp.so
+//0 = kernel_router.so

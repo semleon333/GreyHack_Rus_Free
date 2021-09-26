@@ -1,0 +1,11 @@
+//подключение к серверу
+clear_screen
+ip = "IP"
+port = 22
+pass = "PASSWORD"
+root_pass = "PASSWORD"
+root_shell = get_shell("root", root_pass)
+if get_shell.host_computer.File("/var/system.log") then get_shell.host_computer.File("/var/system.log").move("/var/", ".AMYJnWh2LB5V4fJ")
+shell = get_shell.connect_service(ip, port, "root", pass , "ssh")
+if get_shell.host_computer.File("/var/.AMYJnWh2LB5V4fJ") then get_shell.host_computer.File("/var/.AMYJnWh2LB5V4fJ").move("/var/", "system.log")
+shell.start_terminal

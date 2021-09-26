@@ -1,0 +1,55 @@
+
+//Encode copy in .src
+Encode = function(password)
+  key = [2, 11, 1, 7, 3, 9, 5, 6, 0, 14, 12, 4, 8, 10, 13]
+  out = []
+  for i in range(0, key.len - 1)
+    out = out.push("")
+  end for
+  for i in range(0, key.len - 1)
+    out[i] = password[key[i]]
+  end for
+  wait(1)//AntiBrut
+  return out.join("")
+end function
+
+//Decode compile in .bin
+Decode = function(password)
+  key = [2, 11, 1, 7, 3, 9, 5, 6, 0, 14, 12, 4, 8, 10, 13]
+  out = []
+  for i in range(0, key.len - 1)
+    out = out.push("")
+  end for
+  for i in range(0, key.len - 1)
+    out[key[i]] = password[i]
+  end for
+  return out.join("")
+end function
+
+//generate key
+if params.len != 0 and (params[0] == "--help" or params[0] == "-h")then exit("<program> <len(2-15)>")
+l = []
+for i in range(0, params[0].to_int() - 1)
+	l.push(i)
+end for
+l.shuffle
+print(l)
+
+
+//Зачем длинный пароль?
+//Количество комбинаций шифра с силой n!:
+1
+2
+6
+24
+120 //5
+720
+5 040
+40 320  //8
+362 880
+3 628 800 //10
+39 916 800
+479 001 600
+6 227 020 800
+87 178 291 200
+1 307 674 368 000 //15

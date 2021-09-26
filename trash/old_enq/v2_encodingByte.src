@@ -1,0 +1,282 @@
+Encode = function(password)
+	decToBinF = function(dec)
+		if typeof(dec) == "string" then dec = dec.to_int()
+		bin = ""
+		c = 256
+		for i in range(0,7)
+			c = c/2
+			if dec >= c then
+				dec = dec - c
+				bin = bin + "1"
+			else
+				bin = bin + "0"
+			end if
+		end for
+		return bin
+	end function
+	stringBlocks = function(l, c, type = 0)
+		rv = []
+		if not type then
+			for s in l
+				if c == 2 then
+					for j in range(0, 7, 8/c)
+						rv.push(s[j] + s[j+1] + s[j+2] + s[j+3])
+					end for
+				end if
+				if c == 4 then
+					for j in range(0, 7, 8/c)
+						rv.push(s[j] + s[j+1])
+					end for
+				end if
+				if c == 8 then
+					for j in range(0, 7, 8/c)
+						rv.push(s[j])
+					end for
+				end if
+			end for
+		else
+			for i in range(0, l.len-1, c)
+				s = ""
+				if c == 2 then
+					for j in range(0, 1)
+						s = s + l[i+j][0] + l[i+j][1] + l[i+j][2] + l[i+j][3]
+					end for
+				else if c == 4 then
+					for j in range(0, 3)
+						s = s + l[i+j][0] + l[i+j][1]
+					end for
+				else if c == 8 then
+					for j in range(0, 7)
+						s = s + l[i+j]
+					end for
+				end if
+				rv.push(s)
+			end for
+		end if
+		return rv
+	end function
+	key = []
+	salt = ["r", "V", "R", "k", "N", "U", "u", "A", "R", "u", "Y", "S", "x", "f", "S", "H", "s", "l", "Q", "F", "L", "k", "a", "6", "x", "P", "L", "t", "Q", "C", "W", "P", "1"]
+	out = []
+	pass = []
+	blocks = []
+	for i in range(0, key.len - 1)	//fill out
+		out = out.push("")
+	end for
+	password = password.len + password	//pass.len > pass
+	if password.len < 10 then password = "0" + password
+	for ch in salt	//salt > pass
+		if password.len == key.len/2 then break
+		password = password + ch
+	end for
+	for i in password	//char > dec
+		pass.push(i.code)
+	end for
+	for i in range(0, password.len -1)	//dec > bin
+		pass[i] = decToBinF(pass[i])
+	end for
+  pass = stringBlocks(pass, 2)	//pass > blocks
+	for i in range(0, key.len - 1)	//blocks > out
+		out[i] = pass[key[i]] + "."
+	end for
+	wait(1)	//AntiBrut
+	return out.join("")[0:-1]
+end function
+
+
+
+//Decode compile in .bin
+Decode = function(password)
+	binToDecF = function(bin)
+		dec = 0
+		c = 256
+		for i in bin
+			c = c/2
+			if i == "1" then dec = dec + c
+		end for
+		return dec
+	end function
+	stringBlocks = function(l, c, type = 0)
+		rv = []
+		if not type then
+			for s in l
+				if c == 2 then
+					for j in range(0, 7, 8/c)
+						rv.push(s[j] + s[j+1] + s[j+2] + s[j+3])
+					end for
+				end if
+				if c == 4 then
+					for j in range(0, 7, 8/c)
+						rv.push(s[j] + s[j+1])
+					end for
+				end if
+				if c == 8 then
+					for j in range(0, 7, 8/c)
+						rv.push(s[j])
+					end for
+				end if
+			end for
+		else
+			for i in range(0, l.len-1, c)
+				s = ""
+				if c == 2 then
+					for j in range(0, 1)
+						s = s + l[i+j][0] + l[i+j][1] + l[i+j][2] + l[i+j][3]
+					end for
+				else if c == 4 then
+					for j in range(0, 3)
+						s = s + l[i+j][0] + l[i+j][1]
+					end for
+				else if c == 8 then
+					for j in range(0, 7)
+						s = s + l[i+j]
+					end for
+				end if
+				rv.push(s)
+			end for
+		end if
+		return rv
+	end function
+	key = []   
+	pass = password.split(".")
+	out = []
+	for i in range(0, key.len - 1)	//fill out
+		out = out.push("")
+	end for
+	for i in range(0, key.len - 1)	//retrans
+		out[key[i]] = pass[i]
+	end for
+	out = stringBlocks(out, 2, 1)	//blocks > pass
+	for i in range(0, out.len -1)	//bin > dec
+		out[i] = binToDecF(out[i])
+	end for
+	for i in range(0, out.len -1)	//dec > char
+		out[i] = char(out[i])
+	end for
+	length = out[0:2].join("").to_int	//len pass
+	return out.join("")[2:2+length]
+end function
+
+
+//dec > bin 1byte
+decToBinF = function(dec)
+  if typeof(dec) == "string" then dec = dec.to_int()
+  bin = ""
+  c = 256
+  for i in range(0,7)
+  	c = c/2
+  	if dec >= c then
+  		dec = dec - c
+  		bin = bin + "1"
+  	else
+  		bin = bin + "0"
+  	end if
+  end for
+  return bin
+end function
+print(decToBinF(params[0].to_int))
+
+//dec > bin 4byte
+decToBinF = function(dec)
+  if typeof(dec) == "string" then dec = dec.to_int()
+  bin = ""
+  c = 4294967296
+  for i in range(0,31)
+  	c = c/2
+  	if dec >= c then
+  		dec = dec - c
+  		bin = bin + "1"
+  	else
+  		bin = bin + "0"
+  	end if
+  end for
+  return bin
+end function
+print(decToBinF(params[0].to_int))
+
+//bin > dec
+binToDecF = function(bin)
+  dec = 0
+  c = 256
+  for i in bin
+  	c = c/2
+    if i == "1" then dec = dec + c
+  end for
+  return dec
+end function
+
+stringBlocks = function(l, c, type = 0)
+	rv = []
+	if not type then
+		for s in l
+			if c == 2 then
+				for j in range(0, 7, 8/c)
+					rv.push(s[j] + s[j+1] + s[j+2] + s[j+3])
+				end for
+			end if
+			if c == 4 then
+				for j in range(0, 7, 8/c)
+					rv.push(s[j] + s[j+1])
+				end for
+			end if
+			if c == 8 then
+				for j in range(0, 7, 8/c)
+					rv.push(s[j])
+				end for
+			end if
+		end for
+	else
+		for i in range(0, l.len-1, c)
+			s = ""
+			if c == 2 then
+				for j in range(0, 1)
+					s = s + l[i+j][0] + l[i+j][1] + l[i+j][2] + l[i+j][3]
+				end for
+			else if c == 4 then
+				for j in range(0, 3)
+					s = s + l[i+j][0] + l[i+j][1]
+				end for
+			else if c == 8 then
+				for j in range(0, 7)
+					s = s + l[i+j]
+				end for
+			end if
+			rv.push(s)
+		end for
+	end if
+	return rv
+end function
+
+//generate key
+if params.len != 0 and (params[0] == "--help" or params[0] == "-h")then exit("<program> <len(2-15)>")
+l = []
+for i in range(0, params[0].to_int() - 1)
+	l.push(i)
+end for
+l.shuffle
+print(l)
+if not get_shell.host_computer.File(home_dir + "/key.txt") then print(get_shell.host_computer.touch(home_dir, "key.txt"))
+get_shell.host_computer.File(home_dir + "/key.txt").set_content(l)
+
+
+//gen list of rnd chars
+getCharRnd = function()
+	i = 1
+	while 1
+		i = i*10
+		if i > 1000 then i = 10
+		ch = char(rnd()*256)
+		if ch.code >= 97 and ch.code <= 122 then return ch
+		if ch.code >= 48 and ch.code <= 57  then return ch
+		if ch.code >= 65 and ch.code <= 90  then return ch
+	end while
+end function
+l = []
+for i in range(0, params[0].to_int - 1)
+	l.push(getCharRnd())
+end for
+print(l)
+
+print(stringBlocks(["01","23","45","67","01","23","45","67","01","23","45","67"], params[0].to_int, 2))
+["0123","4567","0123","4567","0123","4567"]
+["01234567","01234567","01234567"]

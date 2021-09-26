@@ -1,0 +1,122 @@
+
+//scan 0.6
+isAParam = function(paramType)
+	for param in params
+		if param.lower == paramType.lower then return true
+	end for
+	return false
+end function
+
+info = function(str)
+	if isAParam("-v") then print("<I>  Info: " + str + "</I>")
+end function
+
+loadLib = function(libName)
+	paths = [get_shell.host_computer.current_path, "/lib", "/bin", "/usr/bin"]
+	for i in paths
+		lib = include_lib(i + "/" + libName)
+		if lib then return lib
+	end for
+	error("Could not find requested library: " + libName)
+	return false
+end function
+
+loadMetaXPloit = function()
+	return loadLib("metaxploit.so")
+end function
+
+padSpaces = function(s, l, p=" ")
+	if typeof(s) == "number" then s = s + ""
+	if s.len >= l then return s
+	padString = ""
+	c = l - s.len
+	while c > 0
+		padString = padString + p
+		c = c - 1
+	end while
+	return (s+padString)
+end function
+
+padSpacesRight = function(s, l, p=" ")
+	if typeof(s) == "number" then s = s + ""
+	if s.len >= l then return s
+	padString = ""
+	c = l - s.len
+	while c > 0
+		padString = p + padString
+		c = c - 1
+	end while
+	return (padString+s)
+end function
+
+typeMachine = function(ip)
+c=get_shell.host_computer
+	if ip == c.network_gateway then
+		return  "<color=#8000ff>gateway </color>"
+	else if get_router(ip) then
+		return  "<color=#42ff42> Router </color>"
+	else if get_switch(ip) then
+		return  "<color=#ff4242> Switch </color>"
+	else if ip == c.lan_ip then
+		return  "<color=#4242ff>current </color>"
+	else
+		return  "<color=#424242>Computer</color>"
+	end if
+end function
+
+
+createRouterMap = function(mRouter)
+	returnValue = mRouter.local_ip + "\n"
+	portFwds = []
+	for externalPort in mRouter.used_ports
+		internal = mRouter.ping_port(externalPort.port_number)
+		if internal then portFwds.push({"external":externalPort, "internal":internal})
+		arrows = "--->"
+		arrows2 = " ---> "
+		if externalPort.is_closed then arrows = "-X->"
+		if not mRouter.ping_port(externalPort.port_number) then
+			arrows2 = " ---> ? "
+		else if mRouter.ping_port(externalPort.port_number).is_closed then
+			arrows2 = " -X-> "
+		end if
+		returnValue = returnValue + " |  |"+arrows+" :" + padSpaces(externalPort.port_number, 5) +" " + padSpaces(mRouter.port_info(externalPort).split(" ")[0], 8) + " " + padSpaces(mRouter.port_info(externalPort).split(" ")[1], 8) + arrows2 + externalPort.get_lan_ip + "\n"
+	end for
+
+	if not mRouter.devices_lan_ip then
+		returnValue = returnValue + " |-> <i>No local machines detected.</i>" + "\n"
+	else
+		for localMachine in mRouter.devices_lan_ip
+      if get_router.public_ip == mRouter.public_ip then
+			   returnValue = returnValue + " |-> <b>" + typeMachine(localMachine) + " " + localMachine + "</b>" +  "\n"
+      else
+         returnValue = returnValue + " |-> <b>Machine at " + localMachine + "</b>" + "\n"
+      end if
+			vbar = "|"
+			if mRouter.devices_lan_ip.indexOf(localMachine) == (mRouter.devices_lan_ip.len-1) then vbar = " "
+			if not mRouter.device_ports(localMachine) then
+				returnValue = returnValue + " "+vbar+"   |--> <i>No ports detected.</i>" + "\n"
+			else
+				for port in mRouter.device_ports(localMachine)
+					arrows = "-->"
+					if port.is_closed then arrows = "-X>"
+					toPrint = " "+vbar+"   |"+arrows+" :" + padSpaces(port.port_number, 5) + " " + padSpaces(mRouter.port_info(port).split(" ")[0], 8) + " " + padSpaces(mRouter.port_info(port).split(" ")[1], 8)
+					for portFwd in portFwds
+						if port.get_lan_ip == portFwd.internal.get_lan_ip and port.port_number == portFwd.internal.port_number then toPrint = toPrint + " ---> external port " + portFwd.external.port_number
+					end for
+					returnValue = returnValue + toPrint + "\n"
+				end for
+			end if
+		end for
+	end if
+	return returnValue
+end function
+
+if params.len != 0 and (params[0] == "-h" or params[0] == "--help") then exit("<program> <router_ip>(opt)")
+if params.len == 0 then
+  router = get_router(get_shell.host_computer.network_gateway)
+else
+  router = get_router(params[0])
+end if
+
+Map = createRouterMap(router)
+print(Map)

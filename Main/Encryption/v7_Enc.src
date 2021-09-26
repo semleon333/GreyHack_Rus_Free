@@ -1,0 +1,10 @@
+
+AND = function(n1,n2)
+	bitwise("&",n1,n2)
+end function
+XOR = function(n1,n2)
+	bitwise("^",n1,n2)
+end function
+OR = function(n1,n2)
+	bitwise("|",n1,n2)
+end function

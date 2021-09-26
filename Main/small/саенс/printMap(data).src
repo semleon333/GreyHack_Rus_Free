@@ -1,0 +1,13 @@
+//шаблон для вывода содержимого мапы, поменяйте MAP = <на_то_что_вам_нужно>
+clear_screen
+MAP = get_shell
+print(MAP.values)
+print()
+print()
+s = ""
+for i in MAP.values[0].indexes
+	s = s + i + " " + str(MAP[i]).replace(" ", "|||") + "\n"
+end for
+s = format_columns(s)
+s = s.replace("|||", " ")
+print(s)

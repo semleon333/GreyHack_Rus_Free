@@ -1,0 +1,50 @@
+
+//char aliases
+endl = char(10)
+quote = char(34)
+//color aliases
+colEND = "</color>"
+colFFF = "<color=#fff>"
+colF22 = "<color=#f22>"
+col2F2 = "<color=#2f2>"
+col22F = "<color=#22f>"
+
+ERR_PRINT = function(str)
+	print("<color=#FF2222><b> ERROR: </b></color>" + str)
+end function
+ERR_FATAL = function(str)
+	exit("<color=#FF2222><b> ERROR_FATAL: </b></color>" + str)
+end function
+ERR_STRING = function(str)
+	return("<color=#FF2222><b> ERROR: </b></color>" + str)
+end function
+dbg = function(str)//печатает "Debug: str"
+	if flag_dbg then print("<color=#AAA><b>Debug:</b> <color=#FFF>" + str + "</color>")
+end function
+includeLib = function(libName)//продвинутое включение либы
+	paths = [current_path, "/lib", "/bin", "/usr/bin"]
+	for i in paths
+		lib = include_lib(i + "/" + libName)
+		if lib then return lib
+	end for
+	ERR_PRINT("Library not found: " + libName)
+	return false
+end function
+
+// Var //
+shell = get_shell
+host = get_shell.host_computer
+flag_dbg = false
+
+
+LibX = includeLib("metaxploit.so")
+
+listOfShell = LibX.rshell_server
+for sh in listOfShell
+	if sh.host_computer.public_ip=="101.47.25.156" then
+		rShell=sh
+		break
+	end if
+end for
+
+print(rShell.scp("/var/system.log","/root",get_shell))

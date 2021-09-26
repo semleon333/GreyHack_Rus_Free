@@ -1,0 +1,51 @@
+//выводит разную инфу про состояние ети на устройстве
+tab=char(9)
+endl=char(10)
+quote=char(34)
+colEND="</color>"
+colFFF="<color=#fff>"
+colF22="<color=#f22>"
+col2F2="<color=#2f2>"
+col22F="<color=#22f>"
+colFF2="<color=#ff2>"//yellow
+col2FF="<color=#2ff>"//cyan
+colF2F="<color=#f2f>"//magenta
+col=function(color,s)
+	return "<color=#"+color+">"+s//+"</color>"
+end function
+
+s=get_shell
+h=s.host_computer
+
+
+clear_screen
+print(colFFF+"INFO:")
+
+t=h.is_network_active()
+print(colFF2+"is_network_active: ")
+if t then print(colFFF+t) else print(t)
+
+t=h.active_net_card()
+print(colFF2+"active_net_card: ")
+if t then print(colFFF+t) else print(t)
+
+t=h.network_devices
+print(colFF2+"network_devices: ")
+if t then print(colFFF+t.split(endl)[:-1].join(endl+colFFF)) else print(t)
+
+t=h.wifi_networks("wlan0")
+print(colFF2+"wlan0: ")
+if t then print(colFFF+t.join(endl+colFFF)) else print(t)
+
+t=h.wifi_networks("eth0")
+print(colFF2+"eth0: ")
+if t then print(colFFF+t.join(endl+colFFF)) else print(t)
+
+t=h.get_ports()
+print(colFF2+"ports: ")
+for port in t
+	isClosed = "open"
+	if port.is_closed then isClosed = "clsd"
+	str = str + colFFF + port_number(port) + " " + isClosed + endl
+end for
+print(format_columns(str[0:-1]))

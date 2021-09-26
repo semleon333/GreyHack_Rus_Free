@@ -1,0 +1,67 @@
+//ssh коннект и выполнение программ из /bin
+ERR_PRINT = function(str)
+	print("<color=#FF2222><b> ERROR: </b></color>" + str)
+end function
+ERR_FATAL = function(str)
+	exit("<color=#FF2222><b> ERROR_FATAL: </b></color>" + str)
+end function
+ERR_STRING = function(str)
+	return("<color=#FF2222><b> ERROR: </b></color>" + str)
+end function
+dbg = function(str)
+	if flag_dbg then print("<b>Debug:</b>" + str)
+end function
+existParam = function(paramType)
+	for param in params
+		if param.lower == paramType.lower then return true
+	end for
+	return false
+end function
+sshF = function(ip, pass, port = 22, username = "root")
+  dbg("connF")
+  temp = get_shell.connect_service(ip, port, username, pass , "ssh")
+  if temp then
+		dbg(temp.host_computer.public_ip)
+	else
+		ERR_PRINT("connF: Not connected: " + temp)
+	end if
+	return temp
+end function
+
+//var
+flag_dbg = false
+
+//init
+if params.len == 0 or params[0] == "-h" or params[0] == "--help" then exit("<program> <ip> <password> or <password> <ip>\nclear/cls	clear_screen()\nexit			exit()\nstart			start_terminal()")
+if existParam("-dbg") then flag_dbg = true
+if is_valid_ip(params[0]) then
+  ip_prm = params[0]
+  pass_prm = params[1]
+  dbg(ip_prm)
+else
+  ip_prm = params[1]
+  pass_prm = params[0]
+  dbg(ip_prm)
+end if
+
+//main
+shellRemote = sshF(ip_prm,pass_prm)
+if not shellRemote then ERR_FATAL("not connected")
+while 1
+  prm = ""
+  ui = user_input("cmd>")
+  commandS = ui.split(" ")[0]
+  if ui.len==0 then continue
+  if commandS=="clear" or commandS=="cls" then
+    clear_screen
+    continue
+  end if
+  if commandS=="exit" then exit
+  if commandS=="start" then shellRemote.start_terminal
+  if ui.len>1 then
+    prm = ui.remove(commandS).trim
+    shellRemote.launch("/bin/"+ui.split(" ")[0],prm)
+  else
+    shellRemote.launch(ui[0])
+  end if
+end while

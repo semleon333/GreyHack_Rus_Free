@@ -1,0 +1,231 @@
+//DBMS for libs
+//char aliases
+endl = char(10)
+quote = char(34)
+//color aliases
+colEND = "</color>"
+colFFF = "<color=#fff>"
+colF22 = "<color=#f22>"
+col2F2 = "<color=#2f2>"
+col22F = "<color=#22f>"
+//Main.lib
+ERR_PRINT = function(str)
+	print("<color=#FF2222><b> ERROR: </b></color>" + str)
+end function
+ERR_FATAL = function(str)
+	exit("<color=#FF2222><b> ERROR_FATAL: </b></color>" + str)
+end function
+ERR_STRING = function(str)
+	return("<color=#FF2222><b> ERROR: </b></color>" + str)
+end function
+dbg = function(str)//печатает "Debug: str"
+	if flag_dbg then print("<color=#AAA><b>Debug:</b> <color=#FFF>" + str + "</color>")
+end function
+prmExist = function(s)//проверка существования параметра s в globals.params
+	if s[1]=="-" then//Ex: --dbg
+		for param in params
+			if param.lower == s.lower then return true
+		end for
+		return false
+	else//Ex: -r from -lar
+		if s.len>2 then ERR_PRINT("wrong format: "+s)
+		s=s[1:]
+		for param in params
+			if param[0]!="-" or param.len<2 or param[1]=="-" then continue
+			for ch in param
+				if ch.lower == s.lower then return true
+			end for
+		end for
+	return false
+end function
+prmTake = function(s)//проверка существования и удаление параметра s в globals.params
+	substr = function(subs)
+		for ch in subs
+			if ch.lower == s.lower then return true
+		end for
+		return false
+	end function
+	if s[1]=="-" then//Ex: --dbg
+		for param in params
+			if param.lower == s.lower then
+				params.remove(params.indexOf(s))
+				return true
+			end if
+		end for
+		return false
+	else//Ex: -r from -lar
+		if s.len>2 then ERR_PRINT("wrong format: "+s)
+		s=s[1:]
+		for param in params
+			if param[0]!="-" or param.len<2 or param[1]=="-" then continue
+			if substr(param) then
+				indx=params.indexOf(param)
+				globals.params[indx]=params[indx].remove(s)
+				if params[indx].len<2 then params.remove(indx)
+				return true
+			end if
+		end for
+	return false
+end function
+includeLib = function(libName)//продвинутое включение либы
+	paths = [current_path, "/lib", "/bin", "/usr/bin"]
+	for i in paths
+		lib = include_lib(i + "/" + libName)
+		if lib then return lib
+	end for
+	ERR_PRINT("Library not found: " + libName)
+	return false
+end function
+
+//new filler
+fill = function(s, ln, side="s+", filler=" ")//строка, длинна, сторона(+s, s+), строка-заполнитель
+	s = str(s)
+	if s.len >= ln then return s
+	filler = filler*ln
+	if side=="s+" then return (s+filler)[:ln]
+	if side=="+s" then return (filler+s)[-ln:]
+end function
+//format string //using fill()
+form = function(list)
+	rv=""
+	for l in list
+		if typeof(l)=="string" then
+			rv=rv+l
+			continue
+		end if
+		p0=l[0]
+		if l.len>1 then
+			p1=l[1]
+		else
+			rv=rv+p0
+			continue
+		end if
+		if l.len>2 then
+			p2=l[2]
+		else
+			rv=rv+fill(p0,p1)
+			continue
+		end if
+		if l.len>3 then
+			p3=l[3]
+		else
+			rv=rv+fill(p0,p1,p2)
+			continue
+		end if
+		rv=rv+fill(p0,p1,p2,p3)
+	end for
+	return rv
+end function
+
+choice = {}
+choice.list123 = function(choices, default = -1)
+	c=0
+	for choice in choices
+		if c==0 then
+			print("<color=#ff2><b>"+choices[0]+"</b>")
+		else
+			print("<color=#ff2><b>["+fill(c+"]", 4)+"</b><color=#fff>"+choices[c])
+		end if
+		c=c+1
+	end for
+	prompt="> "
+	if default>-1 then prompt="[default="+default+"] > "
+	while 1
+		user_choice = user_input(colFF2+prompt+colFFF)
+		if user_choice.len==0 and default>-1 then return default
+		user_choice = user_choice.to_int
+		if not typeof(user_choice)=="number" or user_choice<1 or user_choice>=c then
+			ERR_PRINT("Not a valid choice")
+			continue
+		end if
+		return user_choice
+	end while
+end function
+choice.yesno = function(default, prompt = "")
+	if prompt.len > 0 then print("<b>"+prompt+"</b>")
+	if default then
+		prompt = "y/n [Enter = Yes] > "
+	else
+		prompt = "y/n [Enter = No] > "
+	end if
+	while 1
+		resp = user_input(prompt)
+		if resp.len == 0 then return default
+		if resp.lower[0] == "y" then return true
+		if resp.lower[0] == "n" then return false
+	end while
+end function
+
+
+getLibs = function()
+	dbg("getLibs_F")
+	choices = ["Get:"]
+  folderStorageDir = host.File(folderStorage)
+	dbg(folderStorageDir)
+  files = folderStorageDir.get_files()
+	dbg(files)
+  for file in files
+    lib = LibX.load(file.path)
+		dbg(lib)
+    choices.push(lib.lib_name)
+  end for
+	choice = choice.list123(choices, choices.len-1)
+	dbg(choice)
+	files[choice-1].copy(folderStorageDir.parent.path, files[choice-1].name.split(".")[0] + ".so")
+end function
+
+putLibs = function(folderPath)
+	dbg("putLibs_F")
+  folderDir = host.File(folderPath)
+  dbg(folderDir)
+  files = folderDir.get_files()
+  dbg(files)
+  for file in files
+    lib = LibX.load(file.path)
+    dbg(lib)
+    if lib then
+      dbg(lib.lib_name + " " + lib.version)
+      file.move(folderStorage, lib.lib_name.split(".")[0] + ".so_" +lib.version)
+    end if
+  end for
+end function
+
+// Var //
+shell = get_shell
+host = get_shell.host_computer
+flag_i = false
+dirStor1 = "/storage"
+dirStor2 = "libs"
+folderStorage = dirStor1 + "/" + dirStor2
+print(folderStorage)
+
+// Init //
+//help
+if params.len>0 and (params[0]=="--help" or params[0]=="-h") then
+	print(colFFF+"bdlib <path> [opt: -g, -p]")
+	print(colFFF+"-g --get <destPath> [opt: -g, -p]")
+	print(colFFF+"-p --put <origPath> [opt: -g, -p]")//?
+	exit(colFFF+"DBMS")
+end if
+//Fast DRM
+if not get_router("IP_YOUR_DRM_SERVER").ping_port(1) then exit("Lars say NO")
+
+LibX = includeLib("metaxploit.so")
+
+folderStorageFile = host.File(folderStorage)
+dbg("folderStorageFile: " + folderStorageFile)
+if not folderStorageFile then
+  host.create_folder(dirStor1, dirStor2)
+  folderStorageFile = host.File(folderStorage)
+  dbg("folderStorageFile: " + folderStorageFile)
+end if
+dbg("folderStorageFile: " + folderStorageFile.path)
+folderPath = current_path + "/"
+
+// Main //
+if params.len > 0 then folderPath = params[0]
+if params[0] == folderStorage or params[0] == (folderStorage + "/") then
+	getLibs()
+else
+	putLibs(folderPath)
+end if

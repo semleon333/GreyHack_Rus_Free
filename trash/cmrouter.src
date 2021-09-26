@@ -1,0 +1,124 @@
+//обезопашивание роутера
+//char aliases
+tab=char(9)
+endl=char(10)
+quote=char(34)
+//color aliases
+colEND="</color>"
+colFFF="<color=#fff>"
+colF22="<color=#f22>"
+col2F2="<color=#2f2>"
+col22F="<color=#22f>"
+colFF2="<color=#ff2>"//yellow
+col2FF="<color=#2ff>"//cyan
+colF2F="<color=#f2f>"//magenta
+
+//Main.lib
+//shorts for lib	// !!!---ОЧЕНЬ ВАЖНО ДЛЯ РАБОТЫ ЛИБЫ---!!!
+SHELL = get_shell
+HOST = get_shell.host_computer
+FILE_ROOT = get_shell.host_computer.File("/")
+CURRENT_PATH=current_path
+//
+ERR_PRINT=function(s,fg=0)
+	print("<color=#F22><b> ERROR: </b></color>"+s+colFF2+" time: "+colFFF+str(time))
+	if fg then return str else return 0
+end function
+ERR_FATAL=function(s)
+	exit("<color=#F22><b> ERROR_FATAL: </b></color>"+s)
+end function
+ERR_STRING=function(s)
+	return("<color=#F22><b> ERROR: </b></color>"+s)
+end function
+prmTake=function(s)//проверка существования и удаление параметра s в globals.params
+	substr=function(subs)
+		for ch in subs
+			if ch.lower==s.lower then return true
+		end for
+		return false
+	end function
+	if s[1]=="-" then//Ex: --dbg
+		for param in params
+			if param.lower==s.lower then
+				params.remove(params.indexOf(s))
+				return true
+			end if
+		end for
+		return false
+	else//Ex: -r from -lar
+		if s.len>2 then ERR_PRINT("wrong format: "+s)
+		s=s[1:]
+		for param in params
+			if param[0]!="-" or param.len<2 or param[1]=="-" then continue
+			if substr(param) then
+				indx=params.indexOf(param)
+				globals.params[indx]=params[indx].remove(s)
+				if params[indx].len<2 then params.remove(indx)
+				return true
+			end if
+		end for
+	return false
+end function
+connF=function(shell, ip, pass, port=22, username="root", type="ssh")
+	dbg("connF")
+	if not (shell or ip or pass) then ERR_PRINT("connF: need more params")
+//	dbg(shell.host_computer.public_ip+" "+ip+" "+pass+" "+port+" "+username+" "+type)
+	temp=shell.connect_service(ip.trim, port, username.trim, pass.trim , type.trim)
+	if not temp then ERR_PRINT("connF: Not connected: "+temp)
+//	if temp then dbg(temp.host_computer.public_ip)
+	return temp
+end function
+
+
+
+cmrouter=function(shellObj)
+	help=function()
+		print(colFFF+"cmrouter [opt: --kd, --ho, [opt: ololo]")
+		print(colFFF+"--kd : kernel_router.so defensive")
+		print(colFFF+"--ho : libhttp.so offensive")
+		print(colFFF+"for router; chmodded; deleting junk; rewrite passwd; o+x for sudo; replacing libs")
+		return
+	end function
+	if prmTake("--help") or prmTake("-h") then return help()
+	if not get_router("IP_YOUR_DRM_SERVER").ping_port(1) then return print("Lars say NO")
+	comp = shellObj.host_computer
+
+	flag_router=0
+	flag_http=0
+
+	if prmTake("--kd") then flag_router=1
+	if prmTake("--ho") then flag_http=1
+
+	if flag_router or flag_http then proxy=connF(shellObj,"<IP>","<PASS>")
+
+	if flag_router then proxy.scp("/store/kernel_router.so","/lib/kernel_router.so",shellObj)
+	if flag_http then proxy.scp("/store/libhttp.so","/lib/libhttp.so",shellObj)
+
+
+	comp.File("/").chmod("o-rwx",1)
+	comp.File("/").chmod("g-rwx",1)
+	comp.File("/").chmod("u-rwx",1)
+	if comp.File("/bin/sudo") then comp.File("/bin/sudo").chmod("o+x")
+
+	if comp.File("/home/") then comp.File("/home/").delete
+	if comp.File("/root/Desktop") then comp.File("/root/Desktop").delete
+	if comp.File("/root/Config/") then comp.File("/root/Config/").delete
+	if comp.File("/etc/passwd") then comp.File("/etc/passwd").set_content("root:4e4d6c332b6fe62a63afe56171fd3725")//md5:haha
+end function
+cmrouter(SHELL)
+
+//Remove prog
+//if comp.File("/etc/fstab")    then comp.File("/etc/fstab").delete
+
+//if comp.File("/bin/pwd")      then comp.File("/bin/pwd").delete
+
+//if comp.File("/bin/useradd")  then comp.File("/bin/useradd").delete
+//if comp.File("/bin/userdel")  then comp.File("/bin/userdel").delete
+
+//if comp.File("/bin/build")    then comp.File("/bin/build").delete
+
+//if comp.File("/bin/groupadd") then comp.File("/bin/groupadd").delete
+//if comp.File("/bin/groupdel") then comp.File("/bin/groupdel").delete
+//if comp.File("/bin/groups")   then comp.File("/bin/groups").delete
+
+//if comp.File("/bin/ping")      then comp.File("/bin/ping").delete

@@ -1,0 +1,48 @@
+BTC
+You find this file on the 11.170.0.227 Download page. It is the BTC client used for interacting with your BTC account.
+
+BTCmissions
+You find this file on the 11.170.0.227 Download page. It is a mission hub where you can put up hacking contracts or complete them for BTC.
+
+BTCshop
+You find this file on the 11.170.0.227 Download page. It is a shop where you can trade files with other players.
+
+BTCcasino
+You find this file on the 11.170.0.227 Download page. It is a slot machine where you can win BTC. Win/Lose ratios are about 1/1.
+
+Create a BTC account
+1.  Download the BTC client (BTC) from the 11.170.0.227 Download page.
+2.  Put the BTC client in your /user folder.
+3.  Registration can only be done on your home computer so make sure you are on your home computer.
+4.  Run “BTC register” and insert username and password when prompted, a strong password is recommended. Congratulations, you now have a BTC account!
+
+Deleting your BTC account
+Run “BTC delete” and insert username and password when prompted. This will permanently remove your account and all your money.
+
+Checking your balance
+Run “BTC login” and insert username and password when prompted. This will show you your username, balance, last transaction and secret key for shop setup.
+
+Mining cryptocurrency
+Run “BTC mining” and insert username and password when prompted. The more players mining the slower it becomes. Base rate is 1 BTC/1minute. Mining also degenerates your hardware.
+
+Sending currency to another BTC account
+Run “BTC transfer” and insert username and password when prompted. The client will then ask you for the recipients BTC account username and the amount you wish to send.
+
+Login to your BTC account on this website
+Enter your BTC account username in the “Username” field and press “Submit”. If nothing happens you will need to run “BTC login” with the BTC client to update the website database. You also need to reload the webpage after the database update to login with your account.
+
+Shop setup with the BTC client
+1.  Make sure you have the BTC client in your /user folder and that you have a BTC account.
+2.  Download ShopTemplate.src from the Download page. The shop template is open source so you can check how the BTC client interaction works.
+3.  Open it in CodeEditor.exe and build it into a binary.
+4.  Run “shop_template” and choose the help menu which will give instructions on how to setup a shop with BTC support.
+
+Taking payments via a script interacting with the BTC client
+1.  Make sure you have the BTC client in your /user folder and that you have a BTC account.
+2.  Download ClientTakePayment.src from the Download page. The script template details how a script can be made to take payments with the BTC client.
+3.  Open it in CodeEditor.exe and study the script and the comments.
+
+Auto sending money via a script interacting with the BTC client
+1.  Make sure you have the BTC client in your /user folder and that you have a BTC account.
+2.  Download ClientAutoPayment.src from the Download page. The script template details how a script can be made to send money automatically with the BTC client.
+3.  Open it in CodeEditor.exe and study the script and the comments.

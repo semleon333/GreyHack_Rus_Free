@@ -1,0 +1,130 @@
+//подключение к серверу и безопасное удаление логов
+//char aliases
+tab=char(9)
+endl=char(10)
+quote=char(34)
+//color aliases
+colEND="</color>"
+colFFF="<color=#fff>"
+colF22="<color=#f22>"
+col2F2="<color=#2f2>"
+col22F="<color=#22f>"
+colFF2="<color=#ff2>"//yellow
+col2FF="<color=#2ff>"//cyan
+colF2F="<color=#f2f>"//magenta
+
+//Main.lib
+//shorts for lib	// !!!---ОЧЕНЬ ВАЖНО ДЛЯ РАБОТЫ ЛИБЫ---!!!
+SHELL = get_shell
+HOST = get_shell.host_computer
+FILE_ROOT = get_shell.host_computer.File("/")
+CURRENT_PATH=current_path
+//
+ERR_PRINT=function(s,fg=0)
+	print("<color=#F22><b> ERROR: </b></color>"+s+colFF2+" time: "+colFFF+str(time))
+	if fg then return str else return 0
+end function
+ERR_FATAL=function(s)
+	exit("<color=#F22><b> ERROR_FATAL: </b></color>"+s)
+end function
+ERR_STRING=function(s)
+	return("<color=#F22><b> ERROR: </b></color>"+s)
+end function
+cs=function(string)
+	clear_screen
+	if string then print(string)
+end function
+col=function(color,s)
+	return "<color=#"+color+">"+s//+"</color>"
+end function
+mark=function(color,s)
+	return "<mark=#"+color+">"+s//+"</color>"
+end function
+dbg=function(str)//печатает "Debug: str"
+	if flag_dbg then print("<color=#AAA><b>Debug:</b> <color=#FFF>"+str+"</color>")
+end function
+prmTakeIp=function()//проверка существования и удаление Ip в globals.params
+	for i in range(0,params.len-1)
+		s=params[i]
+		if not is_valid_ip(s) then continue
+		params.remove(i)
+		return s
+	end for
+	return 0
+end function
+prmTake=function(s)//проверка существования и удаление параметра s в globals.params
+	substr=function(subs)
+		for ch in subs
+			if ch.lower==s.lower then return true
+		end for
+		return false
+	end function
+	if s[1]=="-" then//Ex: --dbg
+		for param in params
+			if param.lower==s.lower then
+				params.remove(params.indexOf(s))
+				return true
+			end if
+		end for
+		return false
+	else//Ex: -r from -lar
+		if s.len>2 then ERR_PRINT("wrong format: "+s)
+		s=s[1:]
+		for param in params
+			if param[0]!="-" or param.len<2 or param[1]=="-" then continue
+			if substr(param) then
+				indx=params.indexOf(param)
+				globals.params[indx]=params[indx].remove(s)
+				if params[indx].len<2 then params.remove(indx)
+				return true
+			end if
+		end for
+	return false
+end function
+connF = function(ip, pass, port = 22, username = "root", type = "ssh")
+  dbg("connF")
+  temp = get_shell.connect_service(ip, port, username, pass , type)
+  if temp then
+		dbg(temp.host_computer.public_ip)
+	else
+		ERR_PRINT("connF: Not connected: " + temp)
+	end if
+	return temp
+end function
+
+clearLogs = function()
+	help = function()
+		print(colFFF+"logclear [<pass>] [<ip>] [Opt: <port>]")
+		print(colFFF+"Without parametrs - local</color>")
+		print(colFFF+"Annihilating system.log")
+		return 0
+	end function
+	//var
+	shellTarget=get_shell
+	PORT=22
+
+	//init
+	if prmTake("--help") or prmTake("-h") then return help()
+	//if prmTake("--dbg") then flag_dbg=1
+
+	//main
+	if params.len==1 then help()
+	if params.len!=0 then //Connect to remote target
+		IP=prmTakeIp()
+		PASS=params[0]
+		if params.len>1 and typeof(params[1].to_int)=="number" then PORT = params[1].to_int
+		print()
+		print(colFF2+"connecting...")
+		shellTarget = connF(IP, PASS, PORT)
+		if typeof(shellTarget)!="shell" then ERR_PRINT("connection faild")
+	end if
+	print(colFF2+"start")
+	shellTarget.host_computer.touch("/var", ".tempDBJbgGC12LSXT65U9uCbaFOxjL6PrR")
+	shellTarget.host_computer.File("/var/.tempDBJbgGC12LSXT65U9uCbaFOxjL6PrR").move("/var", "system.log")
+	print(colFF2+"end")
+	return 1
+end function
+
+flag_dbg = 0
+if not get_router("IP_YOUR_DRM_SERVER").ping_port(1) then exit("Lars say NO")
+clearLogs()

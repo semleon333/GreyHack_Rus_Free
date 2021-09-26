@@ -1,0 +1,185 @@
+//пробегает по всем айпишкам, вставляёте в цикл что вы хотите и получайте
+
+//char aliases
+endl = char(10)
+quote = char(34)
+//color aliases
+colEND = "</color>"
+colFFF = "<color=#fff>"
+colF22 = "<color=#f22>"
+col2F2 = "<color=#2f2>"
+col22F = "<color=#22f>"
+
+
+ERR_PRINT = function(str)
+	print("<color=#FF2222><b> ERROR: </b></color>" + str)
+end function
+ERR_FATAL = function(str)
+	exit("<color=#FF2222><b> ERROR_FATAL: </b></color>" + str)
+end function
+ERR_STRING = function(str)
+	return("<color=#FF2222><b> ERROR: </b></color>" + str)
+end function
+dbg = function(str)//печатает "Debug: str"
+	if flag_dbg then print("<color=#AAA><b>Debug:</b> <color=#FFF>" + str + "</color>")
+end function
+prmExist = function(s)//проверка существования параметра s в globals.params
+	if s[1]=="-" then//Ex: --dbg
+		for param in params
+			if param.lower == s.lower then return true
+		end for
+		return false
+	else//Ex: -r from -lar
+		if s.len>2 then ERR_PRINT("wrong format: "+s)
+		s=s[1:]
+		for param in params
+			if param[0]!="-" or param.len<2 or param[1]=="-" then continue
+			for ch in param
+				if ch.lower == s.lower then return true
+			end for
+		end for
+	return false
+end function
+prmTake = function(s)//проверка существования и удаление параметра s в globals.params
+	substr = function(subs)
+		for ch in subs
+			if ch.lower == s.lower then return true
+		end for
+		return false
+	end function
+	if s[1]=="-" then//Ex: --dbg
+		for param in params
+			if param.lower == s.lower then
+				params.remove(params.indexOf(s))
+				return true
+			end if
+		end for
+		return false
+	else//Ex: -r from -lar
+		if s.len>2 then ERR_PRINT("wrong format: "+s)
+		s=s[1:]
+		for param in params
+			if param[0]!="-" or param.len<2 or param[1]=="-" then continue
+			if substr(param) then
+				indx=params.indexOf(param)
+				globals.params[indx]=params[indx].remove(s)
+				if params[indx].len<2 then params.remove(indx)
+				return true
+			end if
+		end for
+	return false
+end function
+
+includeLib = function(libName)//продвинутое включение либы
+	paths = [current_path, "/lib", "/bin", "/usr/bin"]
+	for i in paths
+		lib = include_lib(i + "/" + libName)
+		if lib then return lib
+	end for
+	ERR_PRINT("Library not found: " + libName)
+	return false
+end function
+
+get_randomIp = function()
+	r1 = range(1, 223)
+	r1.shuffle
+	ok1 = str(r1.pull)
+	r2 = range(1, 255)
+	r2.shuffle
+	ok2 = str(r2.pull)
+	r3 = range(1, 255)
+	r3.shuffle
+	ok3 = str(r3.pull)
+	r4 = range(1, 255)
+	r4.shuffle
+	ok4 = str(r4.pull)
+	return (ok1 + "." + ok2 + "." + ok3 + "." + ok4)
+end function
+
+randomScan = function()
+	while 1
+		ip=get_randomIp()
+		router = get_router(ip)
+		if not router then continue
+		scanIP(ip)
+	end while
+end function
+
+plumeScan = function()
+	//1.1.1.1
+	//2.2.2.2
+	i=params[0]
+	for i in range(i, 255)
+		ip=str(i)+"."+str(i)+"."+str(i)+"."+str(i)
+		router = get_router(ip)
+		if not router then continue
+		scanIP(ip)
+	end for
+end function
+
+scanIP = function(ip)
+	//libRouter = LibX.net_use(ip).dump_lib()
+	//print(ip + "	" + libRouter.lib_name + " " + libRouter.version)
+	for port in router.used_ports
+		inf = router.port_info(port)
+		//ssh http ftp rshell
+		if inf and inf.split(" ")[0]=="ssh" then
+			print(ip + "		" + inf)
+		end if
+	end for
+end function
+
+// Var //
+shell = get_shell
+host = get_shell.host_computer
+flag_i = false
+
+// Init //
+//help
+if params.len>0 and (params[0]=="--help" or params[0]=="-h") then
+	print(colFFF+"ls [opt: -l, -a, (or comb, Ex: -lr -ad)] [opt: path]")
+	exit(colFFF+"description")
+end if
+//Fast DRM
+if not get_router("IP_YOUR_DRM_SERVER").ping_port(1) then exit("Lars say NO")
+
+LibX = includeLib("metaxploit.so")
+//LibC = includeLib("crypto.so")
+
+
+// Main //
+if prmTake("-r") then randomScan
+print(params)
+for param in params
+	ip = ["1", "0", "0", "0"]
+	if is_valid_ip(param) then
+		ip = param.split(".")
+		i1 = ip[0].to_int
+		i2 = ip[1].to_int
+		i3 = ip[2].to_int
+		i4 = ip[3].to_int
+		break
+	end if
+end for
+
+if prmTake("-p") then
+	plumeScan
+	exit
+end if
+
+//1.0.0.0
+for i1 in range(i1, 233)
+  for i2 in range(i2, 255)
+    for i3 in range(i3, 255)
+      for i4 in range(i4, 255)
+				ip=str(i1)+"."+str(i2)+"."+str(i3)+"."+str(i4)
+				router = get_router(ip)
+				if not router then continue
+				scanIP(ip)
+      end for
+			i4 = 0
+    end for
+		i3 = 0
+  end for
+	i2 = 0
+end for

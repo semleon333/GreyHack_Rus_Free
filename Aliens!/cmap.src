@@ -1,0 +1,155 @@
+//command: cmap
+if params.len != 1 then exit("<b>Usage: map [ip]")	
+if not is_valid_ip(params[0]) then exit("nope")
+if not get_shell.host_computer.is_network_active then exit("lol you forgot internet")
+line = "----------------------------"
+ipAddress = params[0]
+isLanIp = is_lan_ip( ipAddress )
+
+if isLanIp then
+	router = get_router;
+else 
+	router = get_router( ipAddress )
+end if
+
+if router == null then exit("nope.")
+
+ports = null
+if not isLanIp then
+	ports = router.used_ports
+else
+	ports = router.device_ports(ipAddress)
+end if
+
+if ports == null then exit("uhh, no.")
+if typeof(ports) == "string" then exit(ports)
+
+results = " -Port- -Type- -Version-"
+kernel = router.kernel_version
+rules = false
+if(ports.len == 0) then exit("no ports :( try router scan")
+
+for port in ports
+	service_info = router.port_info(port)
+	lan_ips = port.get_lan_ip
+	portnumber = port.port_number
+	port_status = "o"
+	
+	if(port.is_closed and not isLanIp) then
+		port_status = "-"
+	else
+		portnumber = "*" + portnumber + "*"
+	end if
+	results = results + "\n" + port_status + " " + portnumber + " " + service_info
+end for
+
+router = get_router
+ports = router.used_ports
+
+
+print(line)
+print("LAN:" + lan_ips)
+print("kernel_router v." + kernel)
+print(line)
+
+print("<b>In Use:")
+for port in ports
+	print(router.port_info(port))
+end for
+print(line)
+
+print("<b>Network Ports:")
+print(format_columns(results))
+	if ports != null then
+
+end if
+print(line)
+wait(.25)
+
+attackPort = null
+attack = user_input("Attack Target -" + ipAddress + "- ? y/n: ")
+
+while not attack == "n"
+	
+	if attackPort == null then
+		attackPort = user_input("Port?: ").to_int
+		print(line)
+		print("Initiating remote attack on " + ipAddress + ":" + attackPort + "...")
+	end if
+	
+	metaxploit = include_lib("/lib/metaxploit.so")
+	if not metaxploit then
+		metaxploit = include_lib(parent_path(program_path) + "/metaxploit.so")
+	end if
+	if not metaxploit then exit("you forgot metaxploit ;)")
+	
+	net_session = metaxploit.net_use(ipAddress, attackPort)
+	if not net_session then exit("session fail")
+	wait(.5)
+	print("Session established.")
+	print(line)
+	wait(.25)
+	
+	lib = user_input("[ssh, smtp, http, ftp, sql, init, net, kernel]\nSelect a library (must exist local): ")
+	print("Searching /lib/ for requested library...")
+	lib = lib.replace("ssh", "/lib/libssh.so") 
+	lib = lib.replace("smtp", "/lib/libsmtp.so")
+	lib = lib.replace("http", "/lib/libhttp.so")
+	lib = lib.replace("ftp", "/lib/libftp.so")
+	lib = lib.replace("sql", "/lib/libsql.so")
+	lib = lib.replace("init", "/lib/init.so")
+	lib = lib.replace("net", "/lib/net.so")
+	lib = lib.replace("kernel", "/lib/kernel_module.so")
+	
+	filetest = get_shell.host_computer.File(lib)
+	if filetest == null then
+		exit("Can't find local library file.\n")
+	else
+		print("Library Found. Scanning...\n")
+	end if
+	
+	metaLib = metaxploit.load(lib) 
+	file = get_shell.host_computer.File(lib)
+	
+	shell = null
+	pass =  null
+	metaLib = net_session.dump_lib
+	memory = metaxploit.scan(metaLib)
+	for mem in memory
+		address = metaxploit.scan_address(metaLib, mem).split("Unsafe check:")
+		for add in address
+			if add == address[0] then continue
+			print(add)
+			
+			value = add[add.indexOf("<b>")+3:add.indexOf("</b>")]
+			value = value.replace("\n", "")
+			
+			result = metaLib.overflow(mem, value, "password")
+			print(result)
+			
+			//if typeof(result) == null then print("Returned null")
+			
+			if typeof(result) == "string" then print(result)	
+			
+			if typeof(result) == "router" then print("found router")
+				
+			if typeof(result) == "computer" then
+				file = result.File("/etc/passwd")
+				if file then cont = file.content
+				if cont then print(cont)
+			end if
+		
+			//if typeof(result) == "file" then file = result.File("/etc/passwd")
+				//if file then cont = file.content
+				//if cont then print(cont)
+			//end if
+			
+			if typeof(result) == "shell" then result.start_terminal
+
+	end for
+	print("Error: expected shell, obtained: " + result)
+end for
+exit ("Attack failed")
+
+end while
+if attack then exit("Closing...")

@@ -1,0 +1,4 @@
+//взятие рут шела и поднятие терминала
+clear_screen
+pass = "PASSWORD"
+get_shell("root", pass).start_terminal

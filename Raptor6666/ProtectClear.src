@@ -1,0 +1,118 @@
+// © Grey Hack RUS
+// https://discord.com/channels/793524981312651334/
+// 
+// ProtectClear
+// УДаляет "ненужные" файлы, выставляет права и "обнуляет" системные файлы.
+// 
+User = "u-rwx"
+Group = "g-rwx"
+Others = "o-rwx"
+
+// DeleteAll( PATH, shell ) = Грохает все файлы и папки в заданной директории
+// 
+// [ OUT ] только на терминал
+// [ IN ] string PATH - Путь до папки
+// [ IN OPT ] computer shell - Локальный или удалённый host_computer
+// 	                        - если не задан берётся get_shell.host_computer
+DeleteAll = function( PATH, shell )
+	if typeof( shell ) != "computer" then shell = get_shell.host_computer
+	if null != PATH and "string" == typeof( PATH ) and "" != PATH then
+		FILE = shell.File( PATH )
+
+		Delete = FILE.get_files
+		for file in Delete
+			if file.has_permission("w") then
+				file.delete
+			else
+				print( file.path + " - No permission to delete File!" )
+			end if
+		end for
+
+		Delete = FILE.get_folders
+		for file in Delete
+			if file.has_permission("w") then
+				file.delete
+			else
+				print( file.path + " - No permission to delete Folder!" )
+			end if
+		end for
+	else
+		print( "DeleteAll: """ + PATH + """ Path not found." )
+	end if
+end function
+
+// ResetPerm - Убиваем все для всех права
+// 
+// [ IN OPT ] computer shell - Локальный или удалённый host_computer
+// 	                        - если не задан берётся get_shell.host_computer
+// [ IN ] string PATH - Путь до файла или папки
+// [IN ] number Recursion - 1 применять для всех вложенных файлов
+// 							  - 0 только для заднного файла (поумолчанию)
+ResetPerm = function( PATH, Recursion = 0, shell )
+	if typeof( shell ) != "computer" then shell = get_shell.host_computer
+	if PATH and typeof( PATH ) == "string" then
+		TergetFile = shell.File( PATH )
+		if TergetFile then
+			TergetFile.chmod( Group, Recursion )
+			TergetFile.chmod( User, Recursion )
+		else
+			print( "ResetPerm: """ + PATH + """ Not found." )
+		end if
+	
+		return 1
+	end if
+
+	return 0
+end function
+
+HOST = get_shell.host_computer
+
+// Грохаем "лишние" - редактировать на свой вкус
+DieFiles = [ "/root/Downloads/", "/etc/passwd", "/etc/fstab", "/home/guest/", "/home/root/", "/bin/pwd", "/bin/useradd", "/bin/userdel", "/bin/chgrp", "/bin/groupadd", "/bin/groups", "/bin/chown", "/bin/groupdel", "/bin/passwd" ]
+// ??? не для всех точно [ "/bin/smtp-user-list", "/bin/nmap", "/bin/build", "/bin/nslookup", "/bin/ping" ] 
+for DieFile in DieFiles
+	if HOST.File( DieFile ) then
+		print( DieFile )
+		HOST.File( DieFile ).delete
+	end if
+end for
+// "Обнуляем" системные файлы
+ZeroFiles = [ "/sys/xorg.sys", "/sys/config.sys", "/sys/network.cfg", "/boot/System.map", "/boot/initrd.img", "/boot/kernel.img" ]
+for ZeroFile in ZeroFiles
+	hZeroFile = HOST.File( ZeroFile )
+	if hZeroFile then
+		Name = hZeroFile.name
+		Path = hZeroFile.parent.path
+		HOST.File( ZeroFile ).delete
+		HOST.touch( Path, Name )
+	end if
+end for
+// Удаляем права для папок и файлов в них
+DenyAllow = [ "/root", "/etc/", "/lib/", "/sys/", "/boot/", "/var/", "/server/", "/Public" ]
+for Deny in DenyAllow
+	ResetPerm( Deny, 1 )
+end for
+// Удвляем "лишние" файлы и выставляем права для пользователя
+hHomeDir = HOST.File( "/home/" )
+if hHomeDir then
+	users = hHomeDir.get_folders
+	if users then
+		for user in users
+			DeleteAll( user.path + "/Config" )
+			DeleteAll( user.path + "/.Trash" )
+			ResetPerm( user.path + "/Config" )
+		end for
+	end if
+else
+	print( "No users folder." )
+end if
+// Параноя
+ManSet = [ "/home/", "/bin/", "/bin/build", "/usr/", "/usr/bin/", "/usr/bin/CodeEditor.exe", "/usr/bin/LogViewer.exe"]
+for user in ManSet
+	ResetPerm( user )
+end for
+
+DeleteAll( "/root/.Trash" )
+HOST.File( "/var/system.log" ).delete
+ResetPerm( "/" )
+HOST.File( "/" ).chmod( Others, 1 )

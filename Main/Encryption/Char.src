@@ -1,0 +1,48 @@
+//выводит ВСЕ символы в консоль
+//char aliases
+tab=char(9)
+endl=char(10)
+quote=char(34)
+//color aliases
+colEND="</color>"
+colFFF="<color=#fff>"
+colF22="<color=#f22>"
+col2F2="<color=#2f2>"
+col22F="<color=#22f>"
+colFF2="<color=#ff2>"//yellow
+col2FF="<color=#2ff>"//cyan
+colF2F="<color=#f2f>"//magenta
+
+fill=function(s, ln, side="s+", filler=" ")
+	s=str(s)
+	if s.len >= ln then return s
+	filler=filler*ln
+	if side=="s+" then return (s+filler)[:ln]
+	if side=="+s" then return (filler+s)[-ln:]
+end function
+
+charsList=function()
+  i=0
+  endln=67000
+  strln=100
+  if params.len>0 and (params[0]=="--help" or params[0]=="-h") then
+  	print(colFFF+"ls [opt: <start number>] [opt: <end number>] [opt: <length str number>]")
+  	exit(colFFF+"printed char table")
+  end if
+  if params.len>0 then i=params[0].to_int
+  if params.len>1 then endln=params[1].to_int
+  if params.len>2 then strln=params[2].to_int
+  while i<endln
+    s=""
+    s=s+char(i)
+    i=i+1
+    while i%strln!=0
+      s=s+char(i)
+      i=i+1
+    end while
+    print(fill(i-strln,6)+s)
+  end while
+end function
+
+if not get_router("IP_YOUR_DRM_SERVER").ping_port(1) then exit("Lars say NO")
+charsList()

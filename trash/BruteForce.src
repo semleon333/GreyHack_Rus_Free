@@ -1,0 +1,25 @@
+getCharRnd = function()
+	i = 1
+	while 1
+		i = i*10
+		if i > 1000 then i = 10
+		ch = char(rnd()*256)
+		if ch.code >= 97 and ch.code <= 122 then return ch
+		if ch.code >= 48 and ch.code <= 57  then return ch
+		if ch.code >= 65 and ch.code <= 90  then return ch
+	end while
+end function
+length = 15
+if params.len > 0 then length = params[0].to_int
+while 1
+l = []
+for i in range(0, length - 1)
+	l.push(getCharRnd())
+end for
+if get_shell.connect_service("133.127.169.134", 22, "root", l.join("")) then break
+end while
+if not get_shell.host_computer.File(home_dir + "/brut.txt") then print(get_shell.host_computer.touch(home_dir, "brut.txt"))
+get_shell.host_computer.File(home_dir + "/brut.txt").set_content(l.join(""))
+exit("FIND " + l.join(""))
+//Параметром принимает длинну пароля
+//замените айпи на нужный

@@ -1,0 +1,210 @@
+//удобный взлом wifi
+//char aliases
+tab = char(9)
+endl = char(10)
+quote = char(34)
+//color aliases
+colEND = "</color>"
+colFFF = "<color=#fff>"
+colF22 = "<color=#f22>"
+col2F2 = "<color=#2f2>"
+col22F = "<color=#22f>"
+colFF2 = "<color=#ff2>"//yellow
+col2FF = "<color=#2ff>"//cyan
+colF2F = "<color=#f2f>"//magenta
+ERR_PRINT = function(str)
+	print("<color=#FF2222><b> ERROR: </b></color>" + str)
+end function
+ERR_FATAL = function(str)
+	exit("<color=#FF2222><b> ERROR_FATAL: </b></color>" + str)
+end function
+ERR_STRING = function(str)
+	return("<color=#FF2222><b> ERROR: </b></color>" + str)
+end function
+dbg = function(str)//печатает "Debug: str"
+	if flag_dbg then print("<color=#AAA><b>Debug:</b> <color=#FFF>" + str + "</color>")
+end function
+prmExist = function(s)//проверка существования параметра s в globals.params
+	if s[1]=="-" then//Ex: --dbg
+		for param in params
+			if param.lower == s.lower then return true
+		end for
+		return false
+	else//Ex: -r from -lar
+		if s.len>2 then ERR_PRINT("wrong format: "+s)
+		s=s[1:]
+		for param in params
+			if param[0]!="-" or param.len<2 or param[1]=="-" then continue
+			for ch in param
+				if ch.lower == s.lower then return true
+			end for
+		end for
+	return false
+end function
+prmTake = function(s)//проверка существования и удаление параметра s в globals.params
+	substr = function(subs)
+		for ch in subs
+			if ch.lower == s.lower then return true
+		end for
+		return false
+	end function
+	if s[1]=="-" then//Ex: --dbg
+		for param in params
+			if param.lower == s.lower then
+				params.remove(params.indexOf(s))
+				return true
+			end if
+		end for
+		return false
+	else//Ex: -r from -lar
+		if s.len>2 then ERR_PRINT("wrong format: "+s)
+		s=s[1:]
+		for param in params
+			if param[0]!="-" or param.len<2 or param[1]=="-" then continue
+			if substr(param) then
+				indx=params.indexOf(param)
+				globals.params[indx]=params[indx].remove(s)
+				if params[indx].len<2 then params.remove(indx)
+				return true
+			end if
+		end for
+	return false
+end function
+fill = function(s, ln, side="s+", filler=" ")
+	s = str(s)
+	if s.len >= ln then return s
+	filler = filler*ln
+	if side=="s+" then return (s+filler)[:ln]
+	if side=="+s" then return (filler+s)[-ln:]
+end function
+form = function(list)
+	rv=""
+	for l in list
+		if typeof(l)=="string" then
+			rv=rv+l
+			continue
+		end if
+		p0=l[0]
+		if l.len>1 then
+			p1=l[1]
+		else
+			rv=rv+p0
+			continue
+		end if
+		if l.len>2 then
+			p2=l[2]
+		else
+			rv=rv+fill(p0,p1)
+			continue
+		end if
+		if l.len>3 then
+			p3=l[3]
+		else
+			rv=rv+fill(p0,p1,p2)
+			continue
+		end if
+		rv=rv+fill(p0,p1,p2,p3)
+	end for
+	return rv
+end function
+choice = {}
+choice.list123 = function(choices, default = -1)
+	c=0
+	for choice in choices
+		if c==0 then
+			print("<color=#ff2><b>"+choices[0]+"</b>")
+		else
+			print("<color=#ff2><b>["+fill(c+"]", 4)+"</b><color=#fff>"+choices[c])
+		end if
+		c=c+1
+	end for
+	prompt="> "
+	if default>-1 then prompt="[default="+default+"] > "
+	while 1
+		user_choice = user_input(colFF2+prompt+colFFF)
+		if user_choice.len==0 and default>-1 then return default
+		user_choice = user_choice.to_int
+		if not typeof(user_choice)=="number" or user_choice<1 or user_choice>=c then
+			ERR_PRINT("Not a valid choice")
+			continue
+		end if
+		return user_choice
+	end while
+end function
+includeLib = function(libName)
+	p = [current_path, "/lib", "/bin", "/usr/bin"]
+	for i in p
+		lib = include_lib(i + "/" + libName)
+		if lib then return lib
+	end for
+	ERR_PRINT("Library not found: " + libName)
+	return false
+end function
+//
+
+wifi = function()
+	choiceNetwork = function()
+	  choices = []
+	  networks = host.wifi_networks("wlan0")
+		choices = choices.push("Choose wi-fi network: ")
+	  for i in networks
+			l = i.split(" ")
+	    choices = choices.push(l[1] + " " + l[0] + " " + l[2])
+	  end for
+		cho = choice.list123(choices)
+		l = choices[cho].split(" ")
+		l[0] = floor(300000/l[0][:-1].to_int)
+		return [l[1], l[2], l[0]]
+	end function
+	startMon = function()
+	//	networkDevicesL = host.network_devices()[0:-1].split("\n")
+	//	for deviceS in networkDevicesL
+	//		deviceL = deviceS.split(" ")
+	//		if deviceL[0][0] == "w" and deviceL[-1] == "False" then LibC.airmon("start", deviceL[0])
+	//	end for
+	LibC.airmon("start", "wlan0")
+	end function
+	crackWifi = function(bss, ess, ACKs)
+		startMon()
+		s = LibC.aireplay(bss, ess, ACKs)
+		if s then ERR_PRINT(s)
+		fileFile = host.File(home_dir + "/file.cap")
+		pass = LibC.aircrack(fileFile.path)
+		if fileFile.has_permission("w") then fileFile.delete
+		return(colFFF+bss+tab+ess+tab+colFF2+pass)
+	end function
+	net = choiceNetwork()
+	print(colFF2+net[2]+colFFF+" ACKs needed")
+	print(crackWifi(net[0], net[1], net[2]))
+end function
+
+// Var
+shell = get_shell
+host = get_shell.host_computer
+flag_dbg = false
+
+// Init
+if prmTake("--dbg") or prmTake("--debug") then flag_dbg = true
+//help
+if params.len>0 and (params[0]=="--help" or params[0]=="-h") then
+	print(colFFF+"wifi")
+	exit(colFFF+"choice network > input ACKs > get password")
+end if
+//Fast DRM
+if not get_router("IP_YOUR_DRM_SERVER").ping_port(1) then exit("Lars say NO")
+
+LibC = includeLib("crypto.so")
+
+wifi()
+
+
+//connect_wifi(device, bss, ess, pass)
+exit()
+
+print(get_shell.host_computer.network_devices[:-1])
+LibC = include_lib("/lib/crypto.so")
+print(LibC)
+print(LibC.airmon(params[0], "wlan0"))
+print(get_shell.host_computer.network_devices[:-1])
+
+//

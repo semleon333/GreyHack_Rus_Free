@@ -1,0 +1,61 @@
+ERR_PRINT = function(str)
+	print("<color=#FF2222><b> ERROR: </b></color>" + str)
+end function
+ERR_FATAL = function(str)
+	exit("<color=#FF2222><b> ERROR_FATAL: </b></color>" + str)
+end function
+ERR_STRING = function(str)
+	return("<color=#FF2222><b> ERROR: </b></color>" + str)
+end function
+existParam = function(paramType)//проверка существования параметра paramType в globals.params
+	for param in params
+		if param.lower == paramType.lower then return true
+	end for
+	return false
+end function
+dbg = function(str)//печатает "Debug: str"
+	if flag_dbg then print("<color=#AAA><b>Debug:</b> <color=#FFF>" + str + "</color>")
+end function
+connChain = function(shellList, oldShell)
+  if not oldShell then oldShell = get_shell
+  for i in range (0, SERVER_LIST.len-1, 2)
+    newShell = connF(oldShell,shellList[i], shellList[i+1])
+    if not newShell then ERR_FATAL("Connection failed")
+  //  dbg(newShell.host_computer.public_ip+" "+newShell.host_computer.local_ip)
+    oldShell = newShell
+  end for
+  return newShell
+end function
+connF = function(shell, ip, pass, port = 22, username = "root", type = "ssh")
+	dbg("connF")
+//	dbg(shell.host_computer.public_ip+" "+ip+" "+pass+" "+port+" "+username+" "+type)
+	temp = shell.connect_service(ip.trim, port, username.trim, pass.trim , type.trim)
+	if not temp then ERR_PRINT("connF: Not connected")
+//	if temp then dbg(temp.host_computer.public_ip)
+	return temp
+end function
+//var
+
+SERVER_LIST = [] //LIST OF "ip","SSHpass","ip","SSHpass"...
+
+flag_dbg = false
+port = 22
+username = "root"
+type = "ssh"
+//
+
+if params.len>0 and existParam("-dbg") or existParam("--debug") then
+	flag_dbg = 1
+	params.remove(params.indexOf("-dbg"))
+end if
+if params.len<2 or (params.len>0 and (params[0]=="--help" or params[0]=="-h")) or not is_valid_ip(params[0]) then
+	exit("<color=#fff>proxy <ip> <pass> [opt: port] [opt: username] [opt: type]")
+end if
+if params.len>2 then port = params[2]
+if params.len>3 then username = params[3]
+if params.len>4 then type = params[4]
+
+proxyExitShell = connChain(SERVER_LIST)
+endShell = connF(proxyExitShell, params[0], params[1], port, username, type)
+if not endShell then ERR_FATAL("Last connection error")
+endShell.start_terminal

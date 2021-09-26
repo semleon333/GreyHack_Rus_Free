@@ -1,0 +1,146 @@
+// DEcode
+// Расшифровывает введёный хэш или файл с хэшем пароей.
+// IN string params[0] - файл/путь до файла или строка с хэшем
+// IN string params[1] - файл/путь до файла для сохронения
+// OUT string or file - вывод на консоль или сохронение в файл
+
+AboutHelp = function()
+	exit( "<b>" + program_path.split("/")[-1] + " usage:</b>\n  [hash]\n  [path_file or file_name] + [opt: file_name or file_path to save data]" )
+end function
+
+LoadLibrary = function( LibFileName )
+	PATHs = [ current_path, "/lib" ]
+	for PATH in PATHs
+		LIB = include_lib( PATH + "/" + LibFileName )
+		if LIB then return LIB
+	end for
+
+	return 0
+end function
+
+// [OUT] file или 0.
+// [IN] string FileName - Путь + Имя файла или просто Имя файла
+// [IN OPT]	string flag - 1 : Всегда создаём новый
+//                      - 0 : Открываем и возвращаем файл если есть ( поумолчанию )
+// [IN OPT]	computer compObj - Локальный или удалённый host_computer
+//                           - если не задан берётся get_shell.host_computer
+// [IN] bool hm - Вкл/Выкл режим ( сами разбирайтесь с ним )
+cusTouch = function( FileName, flag = 0, compObj, hm = 0 )
+	if typeof( compObj ) != "computer" then compObj = get_shell.host_computer
+	if typeof( FileName ) == "string" then
+		PATH = parent_path( FileName )
+		if PATH == FileName then
+			PATH = current_path
+		end if
+		
+		DIR = compObj.File( PATH )
+		if not DIR then
+			return 0
+		else if not DIR.has_permission("w") then
+			return 0
+		end if
+		
+		FileName = FileName.split( "/" )
+		FileName = FileName[ FileName.len - 1 ]
+		
+		OUT = compObj.File( PATH + "/" + FileName )
+		if OUT != null then
+			if flag == 0 then
+				return OUT
+			else if flag == 1 then
+				if OUT.is_binary == true then
+					OUT.delete
+				else
+					OUT.set_content( "" )
+					return OUT
+				end if
+			end if
+		end if
+		
+		if compObj.touch( PATH, FileName ) == true then return compObj.File( PATH + "/" + FileName )
+		return 0
+	end if
+	
+	return 0
+end function
+
+// IN string sHASH - строка
+// Проверяем только на МАЛЕНЬКИЕ буквы до g и ЦИФРЫ
+// OUT int - 0 точно не хэш
+//         - 1 возможно хэш
+// P. S.> ХЗ бывают ли большие буквы тут
+IsHash = function( sHASH )
+	if sHASH and typeof( sHASH ) == "string" and 32 == sHASH.len then
+		for i in range( 0, 31 )
+			NumCode = code( sHASH[i] )
+			if ( not(NumCode > 47 and NumCode < 58) and not(NumCode > 96 and NumCode < 103 ) ) then return 0
+		end for
+		return 1
+	end if
+
+	return 0
+end function
+
+DecryptHASH = function( sHASH )
+	if sHASH and typeof( sHASH ) == "string" and IsHash( sHASH ) then
+		pass = LibCrypt.decipher( sHASH )
+		if pass then
+			return pass
+		else
+			return "Can't find password :("
+		end if
+	end if
+
+	return 0
+end function
+
+DecryptFile = function( TargetFile )
+	CryptFile = get_shell.host_computer.File( TargetFile )
+	if not CryptFile then exit( "File not found." )
+	if not CryptFile.has_permission( "r" ) then exit( "Can't read file.")
+	if CryptFile.get_content.len == 0 then exit( "File empty.")
+
+	OutDATA = "Пароли из файла """ + CryptFile.name + """:\n"
+	Lines = CryptFile.get_content.split( "\n" )
+	num = 1
+	for LINE in Lines
+		z = LINE.split( ":" )
+		if 2 == z.len then
+			OutDATA = OutDATA + "User name: " + z[0] + "\nPassword: " + DecryptHASH( z[1] ) + "\n---------------------\n"
+		else
+			OutDATA = OutDATA + "[Error] LINE: " + num + " wrong syntax!\n"
+		end if
+		num = num + 1
+	end for
+
+	if params.len == 2 then 
+		OutFile = cusTouch( params[1] )
+		if OutFile then
+			OutFile.set_content( OutFile.get_content + OutDATA )
+			return
+		else
+			OutFile = cusTouch( params[1], 1 )
+			if OutFile then
+				OutFile.set_content( OutFile.get_content + OutDATA )
+				return
+			else
+				print( "Хреновый второй параметр!.. Ничо не сохранил '-(\nЛови в консоль:" )
+				print( OutDATA )
+			end if
+		end if
+	end if
+
+	print( OutDATA )
+end function
+
+if 0 == params.len or params[0] == "help" or params[0] == "-h" or params[0] == "--help" or params[0] == "/?" or params[0] == "/help" or params.len > 2 then AboutHelp
+LibCrypt = LoadLibrary( "crypto.so" )
+if LibCrypt then
+	if IsHash( params[0] ) then
+		print( DecryptHASH( params[0] ) )
+	else
+		DecryptFile( params[0] )
+	end if
+else
+	print( "Что-то в Init случилось '=(" )
+end if

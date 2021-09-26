@@ -1,0 +1,114 @@
+
+//scanLib24
+
+ERROR = function(str)
+  print("<color=#FF2222><b> ERROR: </b></color>" + str)
+end function
+
+includeLib = function(libName)
+  p = [current_path, "/lib", "/bin", "/usr/bin"]
+  for i in p
+    lib = include_lib(i + "/" + libName)
+    if lib then return lib
+  end for
+  ERROR("Library not found: " + libName)
+  return false
+end function
+
+isAParam = function(paramType)
+	for param in params
+		if param.lower == paramType.lower then return true
+	end for
+	return false
+end function
+
+padSpaces = function(s, l, p=" ")
+	if typeof(s) == "number" then s = s + ""
+	if s.len >= l then return s
+	padString = ""
+	c = l - s.len
+	while c > 0
+		padString = padString + p
+		c = c - 1
+	end while
+	return (s+padString)
+end function
+
+padSpacesRight = function(s, l, p=" ")
+	if typeof(s) == "number" then s = s + ""
+	if s.len >= l then return s
+	padString = ""
+	c = l - s.len
+	while c > 0
+		padString = p + padString
+		c = c - 1
+	end while
+	return (padString+s)
+end function
+
+get_choice = function(choices, default = -1)
+	c = 0
+	for choice in choices
+		if c == 0 then
+			print("<b>" + choices[0] + "</b>")
+		else
+			selString = "<b>[" + c + "]</b>"
+			print(padSpaces(selString, 12) + choices[c])
+		end if
+		c = c + 1
+	end for
+	if default > -1 then
+		prompt = "[default="+default+"] > "
+	else
+		prompt = "> "
+	end if
+	while 1
+		user_choice = user_input(prompt)
+		if user_choice.len == 0 and default > -1 then return default
+		user_choice = user_choice.to_int
+		if not typeof(user_choice) == "number" or user_choice < 1 or user_choice >= c then
+			ERROR("Not a valid choice")
+			continue
+		end if
+		return user_choice
+	end while
+end function
+// Var //
+shell = get_shell
+host = get_shell.host_computer
+LibX = includeLib("metaxploit.so")
+targetLibs = []
+libsForChoice = ["Get choise:"]
+flag_i = false
+
+// Init //
+if params.len != 0 and (params[0] == "-h" or params[0] == "--help") then exit("<program> (/<libFolder> (opt))")
+if isAParam("-i") then flag_i = true
+
+// Main //
+libDirPath = host.File("/lib")
+if params.len > 0 then libDirPath = host.File(params[0])
+targetFiles = libDirPath.get_files()
+
+for file in targetFiles
+  lib = LibX.load(file.path)
+  if lib then
+    targetLibs.push(lib)
+    libsForChoice.push(lib.lib_name + " " + lib.version)
+  end if
+end for
+choice = get_choice(libsForChoice)
+lists = LibX.scan(targetLibs[choice-1])
+
+adresses = ""
+for list in lists
+  adresses = adresses + "<color=#BBBBBB><b>" + list + "</b></color>" + LibX.scan_address(targetLibs[choice-1], list)
+end for
+adresses = adresses.trim
+adresses = adresses.replace("decompiling source...", "").replace("searching unsecure values...", "").replace("Unsafe check: ", "").replace(". Buffer overflow.", "").replace("loop in array ", "").replace("string copy in ", "").replace("compiled at version ", "").replace("Using namespace ", "").replace("equal to ", "").replace("Checking an ", "").replace("Checking ", "")
+//adresses = adresses.replace("", "")
+adresses = adresses.replace(char(10)+char(10), char(10))
+adresses = adresses.replace(char(10)+char(10), char(10))
+adresses = adresses.replace(char(10)+char(10), char(10))
+print(targetLibs[choice-1].lib_name + " " + targetLibs[choice-1].version)
+print(adresses)

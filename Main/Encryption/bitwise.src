@@ -1,0 +1,9 @@
+if params.len == 0 then exit("1 : & ,  2 : | ,  3 : ^ ,  4 : << ,  5 : >> ,  6 : >>>")
+op = {"1":"&", "2":"|", "3":"^", "4":"<<", "5":">>", "6":">>>"}
+
+par1 = params[1].to_int
+par2 = params[2].to_int
+oper = op[params[0]]
+
+print(par1 + "  " + oper + "  " + par2)
+print(bitwise(oper, par1, par2))

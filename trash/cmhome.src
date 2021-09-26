@@ -1,0 +1,32 @@
+//обезопашивание домашнего компа
+colFFF = "<color=#fff>"
+if params.len>0 and (params[0]=="--help" or params[0]=="-h") then
+	print(colFFF+"cmhome")
+	exit(colFFF+"for home pc; chmodded; deleting junk; rewrite passwd,Bank,Mail")
+end if
+if not get_router("IP_YOUR_DRM_SERVER").ping_port(1) then exit("Lars say NO")
+comp = get_shell.host_computer
+comp.File("/").chmod("o-rwx",1)
+comp.File("/").chmod("g-rwx",1)
+comp.File("/").chmod("u-rwx",1)
+comp.File("/home").chmod("g+rx",1)
+comp.File("/home").chmod("u+rx",1)
+comp.File("/bin").chmod("g+rx",1)
+comp.File("/bin").chmod("u+rx",1)
+comp.File("/usr").chmod("g+rx",1)
+comp.File("/usr").chmod("u+rx",1)
+if comp.File("/home/guest/") then comp.File("/home/guest/").delete //Delite directory guest
+users = comp.File("/home/").get_folders //name non root user
+if comp.File(users[0].path + "/Config/Bank.txt") then
+  comp.File(users[0].path + "/Config/Bank.txt").chmod("g-rwx")
+    comp.File(users[0].path + "/Config/Bank.txt").chmod("u-rwx")
+  comp.File(users[0].path + "/Config/Bank.txt").set_content("")
+end if
+if comp.File(users[0].path + "/Config/Mail.txt") then
+comp.File(users[0].path + "/Config/Mail.txt").chmod("g-rwx")
+  comp.File(users[0].path + "/Config/Mail.txt").chmod("u-rwx")
+  comp.File(users[0].path + "/Config/Mail.txt").set_content("")
+end if
+if comp.File("/etc/passwd") then comp.File("/etc/passwd").set_content("root:4e4d6c332b6fe62a63afe56171fd3725")
+
+//if comp.File("/bin/ping") then comp.File("/bin/ping").delete

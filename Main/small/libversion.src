@@ -1,0 +1,55 @@
+//выводит версии локальных библиотек
+ERROR = function(str)
+	print("<color=#FF2222><b> ERROR: </b></color>" + str)
+end function
+isAParam = function(paramType)
+	for param in params
+		if param.lower == paramType.lower then return true
+	end for
+	return false
+end function
+includeLib = function(libName)
+	p = [current_path, "/lib", "/bin", "/usr/bin"]
+	for i in p
+		lib = include_lib(i + "/" + libName)
+		if lib then return lib
+	end for
+	ERROR("Library not found: " + libName)
+	return false
+end function
+
+grabLibsInFolder = function(folder)//serch Libs in folder
+	files = get_shell.host_computer.File(folder).get_files
+	s=""
+	for file in files
+		target = LibX.load(folder + "/" + file.name)
+		if target then
+			s = s + target.lib_name + " " + target.version + "\n"
+		end if
+	end for
+	if s then s = folder + "\n" + s
+	return s
+end function
+
+// Var //
+shell = get_shell
+comp = shell.host_computer
+folders =  [current_path, "/lib", "/bin", "/usr/bin"]
+
+//Init//
+//help
+if params.len>0 and (params[0]=="--help" or params[0]=="-h") then
+	print(colFFF+"libver  [opt: /<libFolder>]")
+	exit(colFFF+"libs version in /lib and <libFolder>")
+end if
+//Fast DRM
+if not get_router("IP_YOUR_DRM_SERVER").ping_port(1) then exit("Lars say NO")
+if params.len != 0 and (params[0] == "-h" or params[0] == "--help") then exit("<program> ( /<libFolder> (opt))")
+if params.len == 1 then folders.push(params[0])
+
+LibX = includeLib("metaxploit.so")
+// Main //
+for i in folders
+	s = grabLibsInFolder(i)
+	if s then	print(format_columns(s))
+end for

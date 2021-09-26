@@ -1,0 +1,52 @@
+
+SHELL=get_shell
+HOST=SHELL.host_computer
+
+programsListBig=[]
+programsListBig.push("jaga")
+programsListBig.push("imf")
+programsListBig.push("duga")
+programsListBig.push("downloader_GHR")
+
+programsListSmall=[]
+programsListSmall.push("mon")
+programsListSmall.push("sniff")
+programsListSmall.push("decipher")
+programsListSmall.push("KILL")
+programsListSmall.push("libver")
+programsListSmall.push("wifi")
+programsListSmall.push("nslookup")
+programsListSmall.push("com")
+programsListSmall.push("char")
+programsListSmall.push("pst")
+programsListSmall.push("logclear")
+programsListSmall.push("ls")
+programsListSmall.push("sec")
+
+mainDirName="programs"
+if not HOST.File("/"+mainDirName) then create_folder("/",mainDirName)
+if not HOST.File("/"+mainDirName+"/about") then create_folder("/"+mainDirName+"/about")
+
+for progName in programsListBig
+  if not HOST.File("/"+mainDirName+"/"+progName) then create_folder("/"+mainDirName,progName)
+  folder=HOST.File("/"+mainDirName+"/"+progName)
+  if not HOST.File(folder.path+"/about") then HOST.touch(folder.path,"about")
+  if not HOST.File(folder.path+"/ver") then
+    HOST.touch(folder.path,"ver")
+    HOST.File(folder.path+"/ver").set_content("0.0.1")
+  end if
+  if not HOST.File(folder.path+"/ver_co") then
+    HOST.touch(folder.path,"ver_co")
+    HOST.File(folder.path+"/ver_co").set_content("0.0.1")
+  end if
+  if not HOST.File(folder.path+"/DB") then create_folder(folder.path,"DB")
+end for
+
+for progName in programsListSmall
+  if not HOST.File("/"+mainDirName+"/about/"+progName) then HOST.touch("/"+mainDirName+"/about",progName)
+end for
+
+file=HOST.File("/"+mainDirName)
+file.chmod("u-rwx",1)
+file.chmod("g-rwx",1)
+file.chmod("o-rwx",1)

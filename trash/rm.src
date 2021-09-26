@@ -1,0 +1,32 @@
+rm = function(f,e)
+  if f == is_folder then
+    folders = f.get_folders
+    print(files)
+    for i in files
+      rm(i)
+      print("rm " + i)
+    end for
+    files = f.get_files
+    print(files)
+    for i in files
+      i.delete
+      print("rm " + i)
+    end for
+  else
+    f.delete
+  end if
+  return true
+end function
+
+e = 0
+if params[0] == "-e" then e = 1
+
+if params.len < 1 or not params[0].trim then exit("rm <-e> <file|dir _name>")
+
+p = params[0].trim
+if params[0] == "--help" then exit(command_info("rm <-e> <file|dir _name>"))
+f = get_shell.host_computer.File(p)
+if typeof(f) != "file" then exit("rm: failed to remove '" + p + "': no such file or directory")
+fd = rm(f)
+if fd == true then exit
+exit("rmdir: failed to remove '" + path + "': " + fd)

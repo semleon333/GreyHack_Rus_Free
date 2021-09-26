@@ -1,0 +1,13 @@
+//подключение к серверу и старт eShell интерфейса
+clear_screen
+pass = "ROOTPASS"
+shellRoot = get_shell("root", pass)
+
+ip = "IP"
+port = 22
+pass = "PASS"
+if get_shell.host_computer.File("/var/system.log") then get_shell.host_computer.File("/var/system.log").move("/var/", ".AMYJnWh2LB5V4fJ")
+shellRemote = get_shell.connect_service(ip, port, "root", pass , "ssh")
+if get_shell.host_computer.File("/var/.AMYJnWh2LB5V4fJ") then get_shell.host_computer.File("/var/.AMYJnWh2LB5V4fJ").move("/var/", "system.log")
+clear_screen
+shellRemote.launch("/bin/rsi")//name rshell interface program

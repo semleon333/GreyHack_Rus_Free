@@ -1,0 +1,32 @@
+///Made by Romeo
+if params.len != 4 then exit("Usage : [ip] [port] [memory] [value]")
+
+globals.CURRENTPATH = get_shell.host_computer.current_path
+metaxploit = include_lib("/lib/metaxploit.so")
+if not metaxploit then
+	metaxploit = include_lib(CURRENTPATH + "/metaxploit.so")
+	if not metaxploit then exit("Metaxploit.so not Found!")
+end if
+
+target = params[0]
+targetRouter = get_router(target)
+if typeof(targetRouter) != "router" then exit("Cannot connect!")
+
+port = params[1].val
+memory = params[2]
+value = params[3]
+
+netsession = metaxploit.net_use(target , port)
+if not netsession then exit("cant connect!")
+
+lib = netsession.dump_lib
+if not lib then exit("cant find lib")
+
+result = lib.overflow(memory , value)
+
+if typeof(result) != "shell" then
+	exit("Expected SHELL! obtained <b>" + result )
+else
+	connect = user_input("Start shell? (y/n)")
+	if connect.lower == "y" then result.start_terminal
+end if

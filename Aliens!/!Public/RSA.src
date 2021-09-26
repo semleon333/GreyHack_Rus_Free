@@ -1,0 +1,185 @@
+//RSA Algorithm by tty (tty#0306 on GH discord)
+//Proof of Concept
+//Modify as you please
+
+Math = {}
+
+Math.hfc2 = function(a,b)
+	if b == 0 then 
+		return a
+	else 
+		return Math.hfc2(b,a%b)
+	end if
+end function
+
+Math.hfc = function(a,b)
+	remainder = 0
+	while (b>0)
+		remainder = b
+		b = a % b
+		a = remainder
+	end while
+	return a
+end function
+
+//a*x % m = 1
+//5*2 % 3 = 1
+Math.findMulInverse2 = function(a,m)
+	c = 1
+	while (c %a > 0)
+		c = c + m
+	end while
+	return floor(c / a)
+end function
+
+Math.findMulInverse = function(a,m)
+	d = 0
+	x1 = 0
+	x2 = 1
+	y1 = 1
+	temp_m = m
+	
+	while a>0
+		temp1 = floor(temp_m / a)
+		temp2 = temp_m - temp1 * a
+		temp_m = a
+		a = temp2
+		x = x2 - temp1 * x1
+		y= d - temp1 * y1
+		x2 = x1
+		x1 = x
+		d = y1
+		y1 = y
+	end while
+	if temp_m == 1 then return d + m
+end function
+
+Math.mPow = function(x,n,m)
+	if m == 1 then
+		return 0
+	else
+		r = 1
+		x = x % m
+		while n > 0
+			if n % 2 == 1 then
+				r = (r*x)%m
+			end if
+			n = floor(n / 2)
+			x = (x^2) % m
+		end while
+		return r
+	end if
+end function
+
+Math.isPrime = function(num)
+	if (num < 2) then
+		return false
+	end if
+	lowPrimes = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97, 101, 103, 107, 109, 113, 127, 131, 137, 139, 149, 151, 157, 163, 167, 173, 179, 181, 191, 193, 197, 199, 211, 223, 227, 229, 233, 239, 241, 251, 257, 263, 269, 271, 277, 281, 283, 293, 307, 311, 313,317, 331, 337, 347, 349, 353, 359, 367, 373, 379, 383, 389, 397, 401, 409, 419, 421, 431, 433, 439, 443, 449, 457, 461, 463, 467, 479, 487, 491, 499, 503, 509, 521, 523, 541, 547, 557, 563, 569, 571, 577, 587, 593, 599, 601, 607, 613, 617, 619, 631, 641, 643, 647, 653, 659, 661, 673, 677, 683, 691, 701, 709, 719, 727, 733, 739, 743, 751, 757, 761, 769, 773, 787, 797, 809, 811, 821, 823, 827, 829, 839, 853, 857, 859, 863, 877, 881, 883, 887, 907, 911, 919, 929, 937, 941, 947, 953, 967, 971, 977, 983, 991, 997]
+	if lowPrimes.indexOf(num) != null then return true
+	for prime in lowPrimes
+		if (num % prime) == 0 then return false
+	end for
+	s = num - 1
+	t = 0
+	while s % 2 == 0
+		s = floor(s/2)
+		t = t + 1
+	end while
+	for trials in range(5)
+		a = floor((rnd*(num-1))+2)
+		v = Math.mPow(a,s,num)
+		if v != 1 then
+			i = 0
+			while v != (num - 1)
+				if i == (t-1) then
+					return false
+				else
+					i = i + 1
+					v = (v^2) % num
+				end if
+			end while
+		else
+			return true
+		end if
+	end for
+end function
+
+Math.genLargePrime = function(keysize)
+	while true
+		key = floor(rnd*(2^(keysize))+2^(keysize-1))
+		if Math.isPrime(key) then return key
+	end while
+end function
+
+
+RSA = {}
+
+publicKey = []
+privateKey = []
+ALPHANUMERIC = "#_:;!$%&\/=?()[]*-+ ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+
+m = new Math
+
+RSA.generateKeys = function(keysize = 8)
+	p = m.genLargePrime(keysize)
+	q = p
+	while p == q
+		q = m.genLargePrime(keysize)
+	end while
+	n = p * q
+	phi = ((p-1)*(q-1))
+	globals.publicKey.push(n)
+	globals.privateKey.push(n)
+	while true
+		e = floor(rnd*(2^(keysize))+2^(keysize-1))
+		if m.hfc(e,phi) == 1 then break
+	end while
+	d = m.findMulInverse(e,phi)
+	globals.publicKey.push(e)
+	globals.privateKey.push(d)
+	print("N: "+n+" PublicKey: "+e+" PrivateKey: "+d)
+end function
+
+RSA.encrypt = function(msg) // gets a msg in plaintext
+	encrypted = []
+	num = null
+	for symbol in msg
+		num = globals.ALPHANUMERIC.indexOf(symbol)
+		if num!=null then
+			encrypted.push(m.mPow(num,globals.publicKey[1],globals.publicKey[0]))
+		else
+			encrypted.push(symbol)
+		end if
+	end for
+	return encrypted // returns a list of encrypted indexes, i.e. [2027,409,372,1578] for [A,B,C,D] using the global variable ALPHANUMERIC
+end function
+
+RSA.decrypt = function(cipher) // gets the list of encrypted indexes from RSA.encrypt
+	decrypted = []
+	l = cipher.len-1
+	for i in range(0,l)
+		character = ""
+		element = cipher.pull
+		if globals.ALPHANUMERIC.indexOf(element) == null and typeof(element) == "string" then
+			decrypted.push(element)
+		else 
+			dec = m.mPow(element,globals.privateKey[1],globals.privateKey[0])
+			character = globals.ALPHANUMERIC[dec]
+			if globals.ALPHANUMERIC.indexOf(character) != null then
+				decrypted.push(character)
+			end if
+		end if
+	end for
+	return decrypted.join("") //returns the msg in plaintext
+end function
+
+
+keysize = user_input("Type a keysize number (<b>4<b<13</b> bits for better speed) to generate a pair of public and private keys randomly: \n")
+r = new RSA
+r.generateKeys(keysize.to_int)
+plaintext = user_input("Type a message you want to encrypt: \n")
+ciphertext = r.encrypt(plaintext)
+print("Encrypted message (list of encrypted chars) using the public key: \n"+ciphertext)
+textback = r.decrypt(ciphertext)
+print("Decrypted message using the private key: \n<color=white>"+textback)

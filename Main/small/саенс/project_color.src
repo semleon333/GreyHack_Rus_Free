@@ -1,0 +1,15 @@
+sp="<size=19><color=#0000><mark=#00000000>.</mark></color>"
+ep="<color=#0000><mark=#00000000>.</mark></color>"
+
+imgPrintList=function(list)
+  rv=[]
+  for i in list
+    s=""
+    for j in i.split(" ")
+      s=s+"<mark=#"+j+">  "
+    end for
+    rv.push(sp+s+ep)
+  end for
+  return rv
+end function
+print(imgPrintList(arr).join(char(10)))

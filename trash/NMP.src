@@ -1,0 +1,16 @@
+if params.len == 0 then exit("zmap [ip]")
+r = get_router(params[0])
+if not r then exit ("invalid ip address")
+closed = "OPEN"
+lans = r.devices_lan_ip
+output = "LAN PORT SERVICE VERSION\n"
+for lan in lans
+	ports = r.device_ports(lan)
+	for port in ports
+		if port.is_closed then
+			closed = "CLOSED"
+		end if
+		output = output + lan + " " + port.port_number + " " + closed + " " + r.port_info(port) + "\n"
+	end for
+end for
+print(format_columns(output))

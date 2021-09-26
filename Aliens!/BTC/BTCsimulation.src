@@ -1,0 +1,19 @@
+//Simulation settings
+SecretShopKey = "1234567890abcdefghijklmnopqrstuvwxyz" //=> this is where you put your SecretShopKey
+//Simulation settings
+
+if params.len != 6 then exit("BTC simulation can only take script based transfer calls")
+if params[0] != "transfer" then exit("BTC simulation only works with the transfer action")
+if params[1] == "client_user_input_username" then params[1] = user_input("Username:")
+if params[2] == "client_user_input_password" then params[2] = user_input("Password:")
+//You add users from right to left in the "users" map
+users = {"doe":"john", "polo":"marco", "grass":"green"}
+if users.indexOf(params[1]) == null or users.indexOf(params[3]) == null then exit("User not found")
+part = params[5].split(":")
+if params[2] == "client_secure_auto_payment" then
+	if part[3] != md5(SecretShopKey+params[3]+params[4]+part[0]+part[1]+part[2]) then exit("Invalid key")
+else
+	if users.indexOf(params[1]) != params[2] then exit("Incorrect password")
+end if
+shop_part = params[3]+" "+params[4]+" "+part[0]+" "+part[1]+" "+part[2]+" "+md5(params[3]+params[4]+part[0]+part[1]+part[2]+SecretShopKey)
+get_shell.launch(launch_path, shop_part)

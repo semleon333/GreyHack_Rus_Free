@@ -1,0 +1,24 @@
+//начал писать генерацию UUID на основе айпи и прочего, но это очень сомнительно
+sumNum = function(param)
+  rv = 1
+  for i in param
+    if i.code==0 then return rv
+    rv = rv * i.code
+  end for
+  return str(rv).replace("E+","").replace(".","")
+end function
+
+uuid = ""
+a = get_shell.host_computer.public_ip
+b = get_shell.host_computer.local_ip
+c = current_date
+print(a)
+print(b)
+print(c)
+uuid = uuid + sumNum(a)
+print(sumNum(a))
+print(uuid)
+uuid = uuid + sumNum(b)
+print(uuid)
+uuid = uuid + sumNum(c)
+print(uuid)

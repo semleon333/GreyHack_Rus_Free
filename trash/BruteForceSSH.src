@@ -1,0 +1,16 @@
+
+
+// Var //
+shell = get_shell
+host = get_shell.host_computer
+
+
+port = 22
+if params.len == 3 then port = params[2].to_int//Port
+if typeof(port) != "number" then exit("Invalid port: " + port)
+
+pass = "000000000000000"
+
+while 1
+get_shell.connect_service(params[0], port, "root", pass, "ssh")
+end while

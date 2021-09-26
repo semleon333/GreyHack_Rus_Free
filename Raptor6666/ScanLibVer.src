@@ -1,0 +1,80 @@
+// © Grey Hack RUS
+// https://discord.com/channels/793524981312651334/
+// 
+// ScanLibVer
+
+AboutHelp = function()
+	exit( program_path.split("/")[-1] + " usage:</b>\n  [opt: Path to library folder.]" )
+end function
+
+// [OUT] hLIB - object или 0
+// [IN] string LibFileName - имя библиотеки
+LoadLibrary = function( LibFileName )
+	PATHs = [ current_path, "/lib" ]
+	for PATH in PATHs
+		hLIB = include_lib( PATH + "/" + LibFileName )
+		if hLIB then return hLIB
+	end for
+	
+	return 0
+end function
+
+// [OUT] hFile или 0.
+// [IN] string FileName - Путь + Имя файла или просто Имя файла
+IsFolderPathExist = function( CheckedPath )
+	if CheckedPath and typeof( CheckedPath ) == "string" then
+		hCheckedPath = get_shell.host_computer.File( CheckedPath )
+		if null != hCheckedPath then
+			if hCheckedPath.is_folder then return hCheckedPath
+		end if
+	end if
+
+	return 0
+end function
+
+// [IN] string PATH - Путь до папки с библиотеками
+//                  - если не задан берётся "/lib/"
+ScanLibFolder = function( PATH = "/lib/" )
+	if PATH and typeof( PATH ) == "string" then
+		hPath = IsFolderPathExist( PATH )
+		if hPath then
+			print( "<b>[OK]</b> <color=yellow>The folder is open.</color>" )
+			LibsFile = hPath.get_files
+			CountOfFile = LibsFile.len
+			if 0 < CountOfFile then
+				LibMetaxploit = LoadLibrary( "metaxploit.so" )
+				if LibMetaxploit then
+					print( "<b>[OK]</b> <color=yellow>Init ""<color=red>metaxploit.so</color>"" successful.</color>" )
+					print( "<b>[OK]</b> <color=yellow>Found: </color><color=red>" + CountOfFile + "</color><color=yellow> file.</color>\n\n<b> ____ Start scan <color=red>/" + hPath.name + "/</color> folder ____</b>\n|" )
+					OUT = "| <color=green>NAME   VERSION</color>\n|"
+					for Lib in LibsFile
+						LoadLib = LibMetaxploit.load( Lib.path )
+						OUT = OUT + "\n| " + Lib.name + " "
+						if null != LoadLib then
+							OUT = OUT + LoadLib.version + " " + "|"
+						else
+							OUT = OUT + "-" + " " + "|"
+						end if
+					end for
+					print( format_columns( OUT ) + "\n|\n<b>'____ Scan complete. ____________\n" )
+				else
+					print( "No files found =(" )
+				end if
+			else
+				print( "[!] Error: metaxploit.so не грузится '-(" )
+			end if
+		else
+			print( "[!] Error: Path to folder is invalid =(" )
+		end if
+	else
+		exit( "[!] Error: ScanLibFolder - Invalid parameter =(" )
+	end if
+end function
+
+print( "<b>    -------############### ----------</b>\n<b><color=yellow>..,,--{__<color=white> Grey</color> <color=#00BFFF>Hack</color> <color=red>RUS </color>__}--,,..</color></b>\n<b>    -------############### ----------\n<b>" )
+if params.len == 0 then
+	ScanLibFolder
+else
+	if params[0] == "help" or params[0] == "-h" or params[0] == "--help" or params[0] == "/?" or params[0] == "/help" or params.len > 1 then AboutHelp
+	ScanLibFolder( params[0] )
+end if

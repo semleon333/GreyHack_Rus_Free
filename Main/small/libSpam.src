@@ -1,0 +1,53 @@
+//генерирование новой версии библиотеки
+ERR_PRINT = function(str)
+	print("<color=#FF2222><b> ERROR: </b></color>" + str)
+end function
+ERR_FATAL = function(str)
+	exit("<color=#FF2222><b> ERROR_FATAL: </b></color>" + str)
+end function
+ERR_STRING = function(str)
+	return("<color=#FF2222><b> ERROR: </b></color>" + str)
+end function
+existParam = function(paramType)//проверка существования параметра paramType в globals.params
+	for param in params
+		if param.lower == paramType.lower then return true
+	end for
+	return false
+end function
+dbg = function(str)//печатает "Debug: str"
+	if flag_dbg then print("<color=#AAA><b>Debug:</b> <color=#FFF>" + str + "</color>")
+end function
+includeLib = function(libName)//продвинутое включение либы
+	paths = [current_path, "/lib", "/bin", "/usr/bin"]
+	for i in paths
+		lib = include_lib(i + "/" + libName)
+		if lib then return lib
+	end for
+	ERR_PRINT("Library not found: " + libName)
+	return false
+end function
+
+LibX = includeLib("metaxploit.so")
+print(LibX)
+
+targetLib = LibX.load("/lib/libchat.so")
+print(targetLib)
+
+wait
+i=0
+while 1
+  targetLib.overflow("","")
+	i=i+1
+	print(i)
+end while
+
+
+
+
+
+
+
+
+
+
+//

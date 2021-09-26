@@ -1,0 +1,327 @@
+//система слежения
+//char aliases
+tab=char(9)
+endl=char(10)
+quote=char(34)
+//color aliases
+colEND="</color>"
+colFFF="<color=#fff>"
+colF22="<color=#f22>"
+col2F2="<color=#2f2>"
+col22F="<color=#22f>"
+colFF2="<color=#ff2>"//yellow
+col2FF="<color=#2ff>"//cyan
+colF2F="<color=#f2f>"//magenta
+
+//Main.lib
+ERR_PRINT = function(str,fg=0)
+	print("<color=#F22><b> ERROR: </b></color>"+str)
+	if fg then return str else return 0
+end function
+ERR_FATAL = function(str)
+	exit("<color=#F22><b> ERROR_FATAL: </b></color>"+str)
+end function
+ERR_STRING = function(str)
+	return("<color=#F22><b> ERROR: </b></color>"+str)
+end function
+cs = function(string)
+	clear_screen
+	if string then print(string)
+end function
+col = function(color,s)
+	return "<color=#"+color+">"+s//+"</color>"
+end function
+mark = function(color,s)
+	return "<mark=#"+color+">"+s//+"</color>"
+end function
+dbg = function(str)//печатает "Debug: str"
+	if flag_dbg then print("<color=#AAA><b>Debug:</b> <color=#FFF>"+str+"</color>")
+end function
+list_s2int = function(list,strong=0)
+	rv = []
+	while list.len>0
+		tmp=list.pull.to_int
+		if strong and typeof(tmp)!="number" then continue
+		rv.push(tmp)
+	end while
+	return rv
+end function
+prmExist = function(s)//проверка существования параметра s в globals.params
+	if s[1]=="-" then//Ex: --dbg
+		for param in params
+			if param.lower==s.lower then return true
+		end for
+		return false
+	else//Ex: -r from -lar
+		if s.len>2 then ERR_PRINT("wrong format: "+s)
+		s=s[1:]
+		for param in params
+			if param[0]!="-" or param.len<2 or param[1]=="-" then continue
+			for ch in param
+				if ch.lower==s.lower then return true
+			end for
+		end for
+	return false
+end function
+prmTake = function(s)//проверка существования и удаление параметра s в globals.params
+	substr=function(subs)
+		for ch in subs
+			if ch.lower==s.lower then return true
+		end for
+		return false
+	end function
+	if s[1]=="-" then//Ex: --dbg
+		for param in params
+			if param.lower==s.lower then
+				params.remove(params.indexOf(s))
+				return true
+			end if
+		end for
+		return false
+	else//Ex: -r from -lar
+		if s.len>2 then ERR_PRINT("wrong format: "+s)
+		s=s[1:]
+		for param in params
+			if param[0]!="-" or param.len<2 or param[1]=="-" then continue
+			if substr(param) then
+				indx=params.indexOf(param)
+				globals.params[indx]=params[indx].remove(s)
+				if params[indx].len<2 then params.remove(indx)
+				return true
+			end if
+		end for
+	return false
+end function
+fill = function(s, ln, side="s+", filler=" ")
+	s=str(s)
+	if s.len >= ln then return s
+	filler=filler*ln
+	if side=="s+" then return (s+filler)[:ln]
+	if side=="+s" then return (filler+s)[-ln:]
+end function
+form = function(list)
+	rv=""
+	for l in list
+		if typeof(l)=="string" then
+			rv=rv+l
+			continue
+		end if
+		p0=l[0]
+		if l.len>1 then
+			p1=l[1]
+		else
+			rv=rv+p0
+			continue
+		end if
+		if l.len>2 then
+			p2=l[2]
+		else
+			rv=rv+fill(p0,p1)
+			continue
+		end if
+		if l.len>3 then
+			p3=l[3]
+		else
+			rv=rv+fill(p0,p1,p2)
+			continue
+		end if
+		rv=rv+fill(p0,p1,p2,p3)
+	end for
+	return rv
+end function
+connF = function(shell, ip, pass, port=22, username="root", type="ssh")
+	dbg("connF")
+	if not (shell or ip or pass) then ERR_PRINT("connF: need more params")
+//	dbg(shell.host_computer.public_ip+" "+ip+" "+pass+" "+port+" "+username+" "+type)
+	temp=shell.connect_service(ip.trim, port, username.trim, pass.trim , type.trim)
+	if not temp then ERR_PRINT("connF: Not connected: "+temp)
+//	if temp then dbg(temp.host_computer.public_ip)
+	return temp
+end function
+connChain = function(shellList, oldShell)
+  if not oldShell then oldShell=get_shell
+  for i in range (0, SERVER_LIST.len-1, 2)
+    newShell=connF(oldShell,shellList[i], shellList[i+1])
+    if not newShell then ERR_FATAL("Connection failed")
+  //  dbg(newShell.host_computer.public_ip+" "+newShell.host_computer.local_ip)
+    oldShell=newShell
+  end for
+  return newShell
+end function
+choose = function(choices, default=-1)
+	if not choices then ERR_PRINT("no choices!")
+	for i in range(0,choices.len-1)
+		if i==0 then
+			print("<color=#ff2><b>"+choices[i]+"</b>")
+		else
+			print("<color=#ff2><b>["+fill(i+"]", 4)+"</b><color=#fff>"+choices[i])
+		end if
+	end for
+	prompt="> "
+	if default>-1 then prompt="[default="+default+"] > "
+	while 1
+		uc=user_input("<color=#ff2>"+prompt+"<color=#fff>")
+		if uc.len==0 then
+			if default>-1 then return [default]
+			continue
+		end if
+		uc=uc.split(" ")
+		uc=list_s2int(uc,1)
+		misses=[]
+		rv=[]
+		for i in uc
+			if typeof(i)=="number" then
+				if i>0 and i<choices.len then rv.push(i) else misses.push(i)
+			else
+				misses.push(i)
+			end if
+		end for
+		if misses.len>0 then print("<color=#ff2>Not a valid choices: "+misses.join(" "))
+		if rv.len>0 then return rv
+	end while
+end function
+chooseYesNo = function(default, prompt="")
+	if prompt.len>0 then print("<b>"+prompt+"</b>")
+	if default then
+		prompt="y/n [Enter = Yes] > "
+	else
+		prompt="y/n [Enter = No] > "
+	end if
+	while 1
+		resp=user_input(prompt)
+		if resp.len==0 then return default
+		if resp.lower[0]=="y"or resp.lower[0]=="н" then return true
+		if resp.lower[0]=="n"or resp.lower[0]=="т" then return false
+	end while
+end function
+
+//end Lib
+
+cs = function(string)
+	clear_screen
+	if string then print(string)
+end function
+
+//begin Dman functions
+
+DatabaseChoose = function() // инит выбора IP для слежки
+	cs()
+	list = []
+	list.push("Choose IP for monitoring:")
+	for f in host.File(DB).get_folders
+		list.push(f.name)
+	end for
+	list.push("Return")
+	choices = choose(list, list.len - 1)
+	if choices[0] == list.len-1 then return 0
+	rv=[]
+	for i in choices
+		rv.push(list[i])
+	end for
+	return rv
+end function
+
+DatabaseAdd = function() //добавление IP в БД
+	cs()
+	while 1
+		ip = user_input("<color=#ff2>"+"Press x to return " + endl + "<color=#ff2>"+"> "+"<color=#fff>")
+		if ip.lower == "x" then return(cs())
+		list = host.File(DB).get_folders
+		for i in list
+			if i.name == ip then
+			return(cs(print("This IP is already in the database!")))
+			end if
+		end for
+		if is_valid_ip(ip) then
+			tmp=ip.split(".")[0]
+			if not (is_lan_ip(ip) or tmp == "10" or tmp == "127" or tmp == "172") then
+				host.create_folder(DB, ip)
+				return(cs("<color=#fff>This IP has been successfully added to the database!"))
+			else
+				cs()
+				ERR_PRINT("Use public IP!")
+			end if
+		else
+			cs()
+			ERR_PRINT("Not valid IP!")
+		end if
+	end while
+end function
+
+DatabaseDel = function() // удаление из БД
+	cs()
+	listG = host.File(DB).get_folders
+	if not listG then return(cs("The Database is empty!"))
+	list = []
+	for f in listG
+		list.push(f.name)
+	end for
+	list.reverse
+	list.push("Choose IP to delete:")
+	list.reverse
+	list.push("Return")
+	choice = choose(list, list.len - 1)[0]
+	if list.len-1 == choice then return cs()
+	if not chooseYesNo(false ,"Are you sure?") then return(cs())
+	if not host.File(DB + "/" + list[choice]) then return(cs("Can't find this IP in Database. Try again.")) 
+	host.File(DB + "/" + list[choice]).delete
+	return(cs("<color=#fff>This IP has been successfully removed from the database!"))
+end function
+
+dumbScan = function(ip)
+	
+end function
+
+spy = function(ipList) // слежка за выбранными IP
+	cs("Внимание!.. " + endl + "Идет...... " + endl + "слешка............")
+	while 1
+		for ip in ipList
+			dump = host.File(DB + "/" + ip + "/dump")
+			list = get_router(ip).devices_lan_ip
+			if not dump then
+				host.touch(DB + "/" + ip, "dump")
+				dump = host.File(DB + "/" + ip + "/dump")
+				dump.set_content(list.join(endl))
+			else if dump.get_content.len != list.join(endl).len then
+				n = 1
+				while 1
+					dumpn = host.File(DB + "/" + ip + "/dump" + n )
+					if not dumpn then
+						host.touch(DB + "/" + ip, "dump" + n )
+						dumpn = host.File(DB + "/" + ip + "/dump" + n )
+						dump.set_content(list.join(endl))
+					end if
+					if dumpn.get_content.len == list.join(endl).len then n = n + 1 else break
+				end while
+			end if
+		end for
+	end while
+end function
+
+//end Dman functions
+
+//---Var---//
+shell = get_shell
+host = get_shell.host_computer
+DB = "/dugatest"
+if not host.File(DB) then host.create_folder("/", "dugatest")
+
+//---Init---//
+cs()
+
+//---Main---//
+while 1
+	begin = choose(["Выберите нужную опцию:","Следить","Добавить к списку","Удалить из списка","Выйти"])[0]
+	if begin == 1 then
+		if not host.File(DB).get_folders then
+			cs("The Database is empty!")
+		else
+			list = DatabaseChoose()
+			cs()
+			if list!=0 then spy(list)
+		end if
+	end if
+	if begin == 2 then DatabaseAdd()
+	if begin == 3 then DatabaseDel()
+	if begin == 4 then exit(col("fff","<b>Не очень то и хотелось..."))
+end while

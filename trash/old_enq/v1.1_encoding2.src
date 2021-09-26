@@ -1,0 +1,51 @@
+
+//Encode copy in .src
+Encode = function(password)
+  key = [2, 11, 1, 7, 3, 9, 5, 6, 0, 14, 12, 4, 8, 10, 13]
+  out = []
+  enc = 1
+  for i in range(0, key.len - 1)
+    out = out.push("")
+  end for
+  if enc then
+    for i in range(0, key.len - 1)
+      out[i] = password[key[i]]
+    end for
+  else
+    for i in range(0, key.len - 1)
+      out[key[i]] = password[i]
+    end for
+  end if
+  wait(1)//AntiBrut
+  return out.join("")
+end function
+
+//Decode compile in .bin
+Decode = function(password)
+  key = [2, 11, 1, 7, 3, 9, 5, 6, 0, 14, 12, 4, 8, 10, 13]
+  out = []
+  enc = 0
+  for i in range(0, key.len - 1)
+    out = out.push("")
+  end for
+  if enc then
+    for i in range(0, key.len - 1)
+      out[i] = password[key[i]]
+    end for
+  else
+    for i in range(0, key.len - 1)
+      out[key[i]] = password[i]
+    end for
+  end if
+  wait(1)//AntiBrut
+  return out.join("")
+end function
+
+//generate key
+if params.len != 0 and (params[0] == "--help" or params[0] == "-h")then exit("<program> <len(2-15)>")
+l = []
+for i in range(0, params[0].to_int() - 1)
+	l.push(i)
+end for
+l.shuffle
+print(l)

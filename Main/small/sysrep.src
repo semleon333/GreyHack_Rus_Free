@@ -1,0 +1,59 @@
+//создаёт/замещает все важные для загрузки системы файлы на пустые txt
+//char aliases
+endl = char(10)
+quote = char(34)
+//color aliases
+colEND = "</color>"
+colFFF = "<color=#fff>"
+colF22 = "<color=#f22>"
+col2F2 = "<color=#2f2>"
+col22F = "<color=#22f>"
+//lib
+ERR_PRINT = function(str)
+	print("<color=#FF2222><b> ERROR: </b></color>" + str)
+end function
+ERR_FATAL = function(str)
+	exit("<color=#FF2222><b> ERROR_FATAL: </b></color>" + str)
+end function
+ERR_STRING = function(str)
+	return("<color=#FF2222><b> ERROR: </b></color>" + str)
+end function
+existParam = function(paramType)//проверка существования параметра paramType в globals.params
+	for param in params
+		if param.lower == paramType.lower then return true
+	end for
+	return false
+end function
+dbg = function(str)//печатает "Debug: str"
+	if flag_dbg then print("<color=#AAA><b>Debug:</b> <color=#FFF>" + str + "</color>")
+end function
+//
+sysrep = function(str)
+  sysFiles = []
+  sysFiles.push(["/sys/","xorg.sys"])
+  sysFiles.push(["/sys/","config.sys"])
+  sysFiles.push(["/sys/","network.cfg"])
+  sysFiles.push(["/etc/","xorg.conf"])
+  sysFiles.push(["/boot/","System.map"])
+  sysFiles.push(["/boot/","initrd.img"])
+  sysFiles.push(["/boot/","kernel.img"])
+  print("---")
+  for sysFile in sysFiles
+    print(host.touch("/","."))
+    if not host.File(sysFile[0]) then
+      print(colFFF+"Creating folder: "+sysFile[0])
+      print(host.create_folder("/",sysFile[0].replace("/","")))
+    end if
+    if not host.File(sysFile[0]+sysFile[1]) then print(colFFF+"Creating file: "+sysFile[0]+sysFile[1])
+    print(host.File("/.").move(sysFile[0],sysFile[1]))
+    print("---")
+  end for
+end function
+// Var //
+shell = get_shell
+host = get_shell.host_computer
+flag_dbg = false
+
+// Init //
+if existParam("-dbg") or existParam("--debug") then flag_dbg = true
+sysrep()

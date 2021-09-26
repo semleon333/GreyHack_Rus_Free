@@ -1,0 +1,5 @@
+ip = params[0].to_int
+port = params[1].to_int
+router = get_router(ip)
+port = router.ping_port(port)
+print(port_number(port) + " " + is_closed(port) + " " + get_lan_ip(port))

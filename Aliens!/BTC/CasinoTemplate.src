@@ -1,0 +1,123 @@
+//Casino settings
+CasinoServerIP = "123.123.123.123" //=>  this is where you put the IP for the rented server you want to host the shop on
+CasinoServerPort = 22 //=>  this is where you put the port number for the rented shop server
+CasinoServerUser = "root" //=>  this is where you put the username you wish to use on the rented shop server
+CasinoServerPass = "password" //=>  this is where you put the password for the rented shop server
+CasinoOwnerBTC = "Username123" //=>  this is where you put your BTC account username
+SecretShopKey = "1234567890abcdefghijklmnopqrstuvwxyz" //=>  this is where you put your SecretShopKey that you can view by using ""BTC login"" in the BTC client
+AutoPassword = "client_secure_auto_payment" //A password placeholder you can use if you want to send money from inside a script without your password
+winA = 10 //How much the player will win when getting 3 in a row
+//Casino settings
+
+if launch_path.split("/")[-1] == "sudo" then exit("Do not run BTCcasino with ""sudo""! Use ""sudo -s"" if you want to run it as root.")
+CasinoServer = get_shell.connect_service(CasinoServerIP,CasinoServerPort,CasinoServerUser,CasinoServerPass)
+if not CasinoServer then exit("Casino can not connect.")
+CasinoComputer = CasinoServer.host_computer
+
+//Casino function
+casino = function()
+	get_symbol = function()
+		symbols = ["<color=green>1</color>", "<color=blue>Q</color>", "<color=purple>%</color>", "<color=yellow>$</color>", "<color=red>7</color>"]
+		symbols.shuffle
+		return symbols.pull
+	end function
+
+	map = {"1":get_symbol,"2":get_symbol,"3":get_symbol,"4":get_symbol,"5":get_symbol,"6":get_symbol,"7":get_symbol,"8":get_symbol,"9":get_symbol}
+
+	lineX = " [" +"X" + "][" +"X" + "][" + "X" + "] "
+	line0 = " [" +"X" + "] [" +"X" + "] [" + "X" + "] "
+	line1 = " [" +map["1"]+ "] [" +map["2"]+ "] [" +map["3"]+ "] "
+	line2 = " [" +map["4"]+ "][" +map["5"]+ "][" +map["6"]+ "] "
+	line3 = " [" +map["7"]+ "] [" +map["8"]+ "] [" +map["9"]+ "] "
+
+	slot_machine = function(line1, line2, line3)
+		S15 = "<size=""15"">"; S19 = "<size=""19"">"; WC = "<color=white>"; RC = "<color=red>"; YC = "<color=yellow>"; PC = "<color=purple>"; CC = "</color>"
+		print("\n\n\n\n\n\n"+"[Spins#]> "+spins+"\n[Winnings#]> "+winnings)
+		print(tab+S15+YC+"/#################\")
+		print(tab+S15+RC+"|||||||||||||||||||")
+		print(tab+S15+RC+"|| "+CC+WC+line1+RC+" ||")
+		print(tab+S19+PC+"=>"+CC+WC+line2+PC+"<=")
+		print(tab+S15+RC+"|| "+CC+WC+line3+RC+" ||")
+		print(tab+S15+RC+"|||||||||||||||||||")
+		print("                    "+S15+YC+"/###################\")
+	end function
+
+	slot_machine(line0, lineX, line0)
+	print(space+" \n"+space+" ")
+	user_input(space+"PRESS ENTER TO SPIN...")
+	globals.spins = spins-1
+	slot_machine(line1, line2, line3)
+
+	if map["4"] == map["5"] and map["5"] == map["6"] then
+		win = winA
+		text = space+"<color=green>NICE!\n"+space
+		globals.winnings = winnings+win
+		print(text+"You won "+win+" BTC!")
+	else
+		print(space+" \n"+space+" ")
+	end if
+	user_input(space+"PRESS ENTER TO CONTINUE...")
+end function
+//Casino function
+
+tab = "	"*7
+space = "                    <color=yellow>|</color>"
+spins = 0
+winnings = 0
+
+//Client validation & file transfer
+if params.len == 6 then
+	if params[2] != "placeholder" then exit("Transaction completed. Thanks for playing!")
+	//Checks if the transaction was completed
+	//[taker]+[money]+[info]+[random]+[owner]+[key]
+	if params[5] != md5(params[0]+params[1]+params[2]+params[3]+params[4]+SecretShopKey) then exit("Shop Security Values Do Not Match")
+	rnd_file = CasinoComputer.File("/server/rnd/"+params[3])
+	if not rnd_file or rnd_file.name == "rnd" then exit("Payment error")
+	rnd_file.delete
+	user_input("Transaction completed.\nWinnings will be sent when you finish playing.\nPlease enjoy the BTC casino, have fun!\nPress enter to continue...")
+	globals.spins = params[1].val
+else
+	print("Welcome to the BTC casino.")
+	print("Prizes:")
+	print("<color=white>"+"[<color=green>?</color>] "*3+" => "+winA+" BTC")
+	print("1 spin = 1 BTC")
+	globals.spins = floor(user_input("How many spins would you like to buy?\nSpins: ").val)
+	if spins == 0 or sign(spins) != 1 then exit("Invalid amount of spins")
+	Info = "placeholder" //If you want to sell a file this is where you put the path to that file, it can also be used with current_date, "placeholder" is just a placeholder
+	Random = str(rnd()) //Creates a random string for added security, you can use other methods to create this string but it needs to be at least 15 characters long
+	if not get_shell.host_computer.File(home_dir+"/BTC") then exit(home_dir+"/BTC missing. Download the BTC client from 11.170.0.227") //Checks if the BTC client can be found on the computer
+	CasinoComputer.touch("/server/rnd", Random)
+	CasinoComputer.File("/").chmod("u-rwx",1)
+	CasinoComputer.File("/").chmod("g-rwx",1)
+	CasinoComputer.File("/").chmod("o-rwx",1)
+	//BTC: [action] [payee] [pass] [seller] [price] [info:random:shop:md5(key+seller+price+info+random+shop)]
+	//Launches the BTC with the information needed for a transaction
+	exit(get_shell.launch(home_dir+"/BTC", "transfer client_user_input_username client_user_input_password "+CasinoOwnerBTC+" "+spins+" "+Info+":"+Random+":"+CasinoOwnerBTC+":"+md5(SecretShopKey+CasinoOwnerBTC+spins+Info+Random+CasinoOwnerBTC)))
+end if
+//Client validation & file transfer
+
+//Casino loop
+while spins > 0
+	casino()
+end while
+//Casino loop
+
+user_input("\n\n\n\n\n\n"+"Game ended, no more spins left.\nPress enter to finish playing...")
+if winnings == 0 then exit
+
+print("What BTC account should recive the winnings?")
+Recipient = ""
+while true
+	Recipient = user_input("BTC Username: ")
+	if Recipient == "" then continue
+	Confirm = user_input("Confirm Username: ")
+	if Recipient == Confirm then break
+	print("Values did not match, try again.")
+end while
+
+Random = str(rnd())
+Info = current_date[:-6] //A timestamp on the transfer that has to be used in this format!
+print("Sending "+winnings+" BTC to "+Recipient+"...")
+//BTC: [action] [payee] [pass] [taker] [money] [info:random:payee:md5(key+taker+money+info+random+payee)]
+//Launches the BTC with the information needed for a transaction
+exit(get_shell.launch(home_dir+"/BTC", "transfer "+CasinoOwnerBTC+" "+AutoPassword+" "+Recipient+" "+winnings+" "+Info+":"+Random+":"+CasinoOwnerBTC+":"+md5(SecretShopKey+Recipient+winnings+Info+Random+CasinoOwnerBTC)))

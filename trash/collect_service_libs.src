@@ -1,0 +1,62 @@
+ERR_PRINT = function(str)
+	print("<color=#FF2222><b> ERROR: </b></color>" + str)
+end function
+ERR_FATAL = function(str)
+	exit("<color=#FF2222><b> ERROR_FATAL: </b></color>" + str)
+end function
+ERR_STRING = function(str)
+	return("<color=#FF2222><b> ERROR: </b></color>" + str)
+end function
+existParam = function(paramType)//проверка существования параметра paramType в globals.params
+	for param in params
+		if param.lower == paramType.lower then return true
+	end for
+	return false
+end function
+dbg = function(str)//печатает "Debug: str"
+	if flag_dbg then print("<color=#AAA><b>Debug:</b> <color=#FFF>" + str + "</color>")
+end function
+includeLib = function(libName)
+	paths = [current_path, "/lib", "/bin", "/usr/bin"]
+	for i in paths
+		lib = include_lib(i + "/" + libName)
+		if lib then return lib
+	end for
+	ERR_PRINT("Library not found: " + libName)
+	return false
+end function
+
+
+main = function()
+  clear_screen
+  libStorageDir = get_shell.host_computer.File("/storage")
+  libDir = get_shell.host_computer.File("/lib")
+  for newLibFile in libDir.get_files
+		wait(0.2)
+		print(".")
+    print(newLibFile.path)
+//		dbg(newLibFile.name[0:3])
+		if newLibFile.name[0:3] != "lib" then continue
+    newLib = LibX.load(newLibFile.path)
+    if not newLib then continue
+    print(".		newLib: "+newLib.version)
+		oldLibFile = get_shell.host_computer.File("/storage/"+newLibFile.name)
+    oldLib = LibX.load(oldLibFile.path)
+    print(".		oldLib: "+oldLib.version)
+		if newLib.version != oldLib.version then
+			oldLibFile.rename(oldLib.lib_name.remove("lib").remove(".so") + "_" + oldLib.version)
+			newLibFile.copy("/storage/", newLibFile.name)
+		end if
+  end for
+
+
+end function
+// Var //
+flag_dbg = false
+
+// Init //
+if existParam("-dbg") or existParam("--debug") then flag_dbg = true
+LibX = includeLib("metaxploit.so")
+
+//
+main()

@@ -1,0 +1,426 @@
+//сверяет файлы и находит несостыковки
+//char aliases
+endl = char(10)
+quote = char(34)
+//color aliases
+colEND = "</color>"
+colFFF = "<color=#fff>"
+colF22 = "<color=#f22>"
+col2F2 = "<color=#2f2>"
+col22F = "<color=#22f>"
+colFF2 = "<color=#ff2>"//yellow
+col2FF = "<color=#2ff>"//cyan
+colF2F = "<color=#f2f>"//magenta
+ERR_PRINT = function(str)
+	print("<color=#FF2222><b> ERROR: </b></color>" + str)
+end function
+ERR_FATAL = function(str)
+	exit("<color=#FF2222><b> ERROR_FATAL: </b></color>" + str)
+end function
+ERR_STRING = function(str)
+	return("<color=#FF2222><b> ERROR: </b></color>" + str)
+end function
+connF = function(shell, ip, pass, port = 22, username = "root", type = "ssh")
+	dbg("connF")
+	//dbg(shell.host_computer.public_ip+" "+ip+" "+pass+" "+port+" "+username+" "+type)
+	temp = shell.connect_service(ip.trim, port, username.trim, pass.trim , type.trim)
+	if not temp then ERR_PRINT("connF: Not connected: " + temp)
+	return temp
+end function
+connChain = function(shellList, oldShell)
+  if not oldShell then oldShell = get_shell
+  for i in range (0, SERVER_LIST.len-1, 2)
+    newShell = connF(oldShell,shellList[i], shellList[i+1])
+    if not newShell then ERR_FATAL("Connection failed")
+  //  dbg(newShell.host_computer.public_ip+" "+newShell.host_computer.local_ip)
+    oldShell = newShell
+  end for
+  return newShell
+end function
+existParam = function(paramType)//проверка существования параметра paramType в globals.params
+	for param in params
+		if param.lower == paramType.lower then return true
+	end for
+	return false
+end function
+dbg = function(str)//печатает "Debug: str"
+	if flag_dbg then print("<color=#AAA><b>Debug:</b> <color=#FFF>" + str + "</color>")
+end function
+flag_dbg = false
+if existParam("-dbg") or existParam("--debug") then flag_dbg = true
+
+prmExist=function(s)//проверка существования параметра s в globals.params
+	if s[1]=="-" then//Ex: --dbg
+		for param in params
+			if param.lower==s.lower then return true
+		end for
+		return false
+	else//Ex: -r from -lar
+		if s.len>2 then ERR_PRINT("wrong format: "+s)
+		s=s[1:]
+		for param in params
+			if param[0]!="-" or param.len<2 or param[1]=="-" then continue
+			for ch in param
+				if ch.lower==s.lower then return true
+			end for
+		end for
+	return false
+end function
+prmTake=function(s)//проверка существования и удаление параметра s в globals.params
+	substr=function(subs)
+		for ch in subs
+			if ch.lower==s.lower then return true
+		end for
+		return false
+	end function
+	if s[1]=="-" then//Ex: --dbg
+		for param in params
+			if param.lower==s.lower then
+				params.remove(params.indexOf(s))
+				return true
+			end if
+		end for
+		return false
+	else//Ex: -r from -lar
+		if s.len>2 then ERR_PRINT("wrong format: "+s)
+		s=s[1:]
+		for param in params
+			if param[0]!="-" or param.len<2 or param[1]=="-" then continue
+			if substr(param) then
+				indx=params.indexOf(param)
+				globals.params[indx]=params[indx].remove(s)
+				if params[indx].len<2 then params.remove(indx)
+				return true
+			end if
+		end for
+	return false
+end function
+
+
+//MATH
+decToHex = function(dec,l=8)
+  d_h = function(num)
+    if num == 10 then return "A"
+    if num == 11 then return "B"
+    if num == 12 then return "C"
+    if num == 13 then return "D"
+    if num == 14 then return "E"
+    if num == 15 then return "F"
+  end function
+  hex = ""
+  while hex.len<l
+		if dec>0 then
+      h = dec%16
+      if hex>9 then h = d_h(h)
+			hex = h + hex
+			dec = (dec-dec%16)/16
+		else
+			hex = "0" + hex
+		end if
+	end while
+  return hex
+end function
+
+UUID = {}
+UUID.NAMES = [".UUID0",".UUID1",".UUID2",".UUID3"]
+UUID.SYS_PATH = "/.UUID/"
+UUID.grub = function()
+  dbg("UUID.grub")
+  files = []
+  dbg(UUID.SYS_PATH+UUID.NAMES[0])
+  for i in range(0, UUID.NAMES.len-1)
+    dbg(files.push(get_shell.host_computer.File(UUID.SYS_PATH+UUID.NAMES[i])))
+  end for
+  s = ""
+  for file in files
+    if not file then
+      ERR_PRINT("Not found UUID files")
+      return null
+    end if
+    s = s + decToHex(file.size.to_int,8)
+  end for
+  dbg("end UUID grub"+char(10))
+  return s
+end function
+UUID.gen = function(dec,l)
+  dbg("UUID.gen")
+  dirPath = UUID.SYS_PATH
+  dbg(dirPath)
+  names = [str(rnd())[1:],str(rnd())[1:],str(rnd())[1:],str(rnd())[1:]]
+  for i in names
+    dbg(get_shell.host_computer.touch(dirPath,i+".src"))
+  end for
+  uuidTxtFiles = []
+  for i in names
+    uuidTxtFiles.push(get_shell.host_computer.File(dirPath+i+".src"))
+  end for
+  dbg(uuidTxtFiles)
+  dbg(uuidTxtFiles[0])
+  for i in uuidTxtFiles
+    if i == null then
+      ERR_PRINT("UUID file not created")
+      return
+    end if
+  end for
+  dbg(uuidTxtFiles[0].name)
+  for i in uuidTxtFiles
+    dbg(i.set_content("print("+char(34)+"system file, not delete!"+char(34)+")"))
+  end for
+  dbg("build/delete")
+  for i in uuidTxtFiles
+    dbg(get_shell.build(i.path, dirPath))
+    dbg(i.delete)
+  end for
+  dbg("build/delete end")
+  uuidRawFiles = []
+  for i in range(0, names.len-1)
+    uuidRawFiles.push(get_shell.host_computer.File(dirPath+names[i]))
+  end for
+  dbg(uuidRawFiles)
+  if get_shell.host_computer.File(dirPath+UUID.NAMES[0]) then
+    for i in range(0, UUID.NAMES.len-1)
+      dbg(get_shell.host_computer.File(dirPath+UUID.NAMES[i]).delete)
+    end for
+  end if
+  for i in range(0, uuidRawFiles.len-1)
+    dbg(uuidRawFiles[i].name)
+    dbg(uuidRawFiles[i].rename(".UUID"+i))
+  end for
+  dbg("end UUID generation"+char(10))
+end function
+
+updateСheckF = function()
+	comVersionsF = function(versionOnServS)
+	  dbg("comVersionsF")
+		dbg("versionOnServS " + versionOnServS)
+		dbg("PROGRAM.VERSION_S " + PROGRAM.VERSION_S)
+		versionOnServL = []
+		version_prog = []
+		S = PROGRAM.VERSION_S.split(".")
+		for s in S
+			version_prog.push(s.to_int())
+		end for
+		for s in versionOnServS.split(".")
+			versionOnServL.push(s.to_int())
+		end for
+		dbg("versionOnServL " + versionOnServL)
+		dbg("version_prog " + version_prog)
+		for i in range(0, versionOnServL.len - 1)
+			if versionOnServL[i] > version_prog[i] then return true
+			if versionOnServL[i] < version_prog[i] then return false
+		end for
+		return false
+	end function
+	updateProgramF = function(versionFile)
+		dbg("updateProgramF")
+		programStorDirOnServFile = SERVER_HOST.File(programsStorDirOnServPath + PROGRAM.NAME)
+		if not programStorDirOnServFile then ERR_FATAL("New version file not found")
+		dbg("programStorDirOnServFile " + programStorDirOnServFile.path)
+		SERVER_SHELL.scp(programStorDirOnServFile.path, current_path, shell)
+		if program_path.split("/")[-1] == PROGRAM.NAME then
+			shell.launch(current_path + "/" + PROGRAM.NAME)
+		else
+			shell.launch(current_path + "/" + PROGRAM.NAME, "--deleting " + program_path)
+		end if
+		exit()
+	end function
+
+	print(colFF2+"start update")
+ 	if params.len > 0 and (existParam("-dbg") or existParam("--debug")) then flag_dbg = true
+	if not active_user == "root" then print("<color=#FF2222>Run from <b>root</b></color>")
+	if params.len > 0 and params[0] == "--deleting" then
+		if host.File(params[1]) then
+			host.File(params[1]).delete
+			print("Old version deleted")
+		end if
+	end if
+	if not SERVER_SHELL then ERR_FATAL("Server not available")
+  versionFile = SERVER_HOST.File(VER_ON_SERV_PATH)
+	dbg("versionFile: " + versionFile)
+	if not versionFile then ERR_FATAL("No versionFile on server")
+	if versionFile.get_content().split(".").len != 3 then ERR_FATAL("versionFile on server incorrect")
+
+	co_versionFile = SERVER_HOST.File(PROGRAM.CO_VER_PATH)
+	dbg("versionFile: " + co_versionFile)
+	if not co_versionFile then ERR_FATAL("No versionFile on server")
+	if co_versionFile.get_content().split(".").len != 3 then ERR_FATAL("versionFile on server incorrect")
+	dbg("versionFile: " + co_versionFile)
+	if comVersionsF(co_versionFile.get_content()) then
+		if user_input("???").trim != SERVER_SHELL.host_computer.File(DOWNLOAD_PASS_FILE_PATH).get_content() then
+			print("get")
+			wait
+			print("the")
+			wait
+			print("<color=#A44>Fuck</color>")
+			wait
+			exit("<color=#F22>OUT</color>")
+		end if
+	end if
+
+	if comVersionsF(versionFile.get_content()) then updateProgramF()
+	print(colFF2+"end update")
+	wait
+end function
+
+getCheckSumm = function(dir)
+  rv = ""
+  files = dir.get_files
+  folders = dir.get_folders
+  rv = rv + dir.path + " " + dir.size + char(10)
+  for file in files
+    rv = rv + file.path + " " + file.size + char(10)
+  end for
+  for folder in folders
+    rv = rv + getCheckSumm(folder)
+  end for
+  return rv
+end function
+
+qwe = function(s)
+  for i in range(0,100,10)
+    if s.len<i then
+      while s.len<i
+        s = s + " "
+      end while
+      return s
+    end if
+  end for
+end function
+fillS = function(s,i,right)
+	if right then
+	  while s.len<i
+	    s=s+" "
+	  end while
+	else
+	  while s.len<i
+	    s=" "+s
+	  end while
+	end if
+	return s
+end function
+
+//var
+
+shell = get_shell
+host = get_shell.host_computer
+
+SERVER_LIST = [] //LIST OF "ip","SSHpass","ip","SSHpass"...
+
+PROGRAM = {}
+PROGRAM.NAME = "imf"
+PROGRAM.VERSION_S = "0.2.0"
+PROGRAM.VERSION_L_N = []
+
+DOWNLOAD_PASS_FILE_PATH = "/programs/download/download_pass"
+
+NAME_VER = PROGRAM.NAME+" v"+PROGRAM.VERSION_S
+programsStorDirOnServPath = "/programs/"+PROGRAM.NAME+"/"
+VER_ON_SERV_PATH = programsStorDirOnServPath+"ver"
+PROGRAM.CO_VER_PATH = programsStorDirOnServPath+"ver_co"
+
+SERVER_MAIN_FOLDER_PATH = programsStorDirOnServPath+"DB/"
+//
+
+//if existParam("--dbg") or existParam("--debug") then flag_dbg = true
+
+if host.File("/var/system.log") then host.File("/var/system.log").move("/var/", ".qEuXCmvxMrwNfzO")
+SERVER_SHELL = connChain(SERVER_LIST)
+if host.File("/var/.qEuXCmvxMrwNfzO") then host.File("/var/.qEuXCmvxMrwNfzO").move("/var/", "system.log")
+if not SERVER_SHELL then ERR_FATAL("server not available")
+SERVER_HOST = SERVER_SHELL.host_computer
+
+updateСheckF()
+
+UUID_STRING = UUID.grub()
+if not UUID_STRING then
+  UUID.gen()
+  UUID_STRING = UUID.grub()
+end if
+if not UUID_STRING then ERR_FATAL("Don`t grabbed UUID")
+
+
+CS_FOLDER = SERVER_HOST.File(SERVER_MAIN_FOLDER_PATH+UUID_STRING)
+if not CS_FOLDER then SERVER_HOST.touch(SERVER_MAIN_FOLDER_PATH+UUID_STRING+"/0/", "0")
+CS_FOLDER = SERVER_HOST.File(SERVER_MAIN_FOLDER_PATH+UUID_STRING)
+
+flag_loop=0
+if prmTake("--loop") then flag_loop=1
+print(colFF2+"---START---")
+i = 0
+while 1
+  dbg(i)
+  file = SERVER_HOST.File(CS_FOLDER.path+"/"+i)
+  if file then
+    dbg(file.name)
+    i = i + 1
+    continue
+  end if
+  fileOld = SERVER_HOST.File(CS_FOLDER.path+"/"+(i-1)+"/"+(i-1))
+  dbg(fileOld.name)
+  dbg(CS_FOLDER.path +" "+i)
+  SERVER_HOST.touch(CS_FOLDER.path+"/"+str(i), str(i))
+  fileNew = SERVER_HOST.File(CS_FOLDER.path+"/"+str(i)+"/"+i)
+  newCS = getCheckSumm(get_shell.host_computer.File("/"))
+  fileNew.set_content(newCS)
+  oldCS = fileOld.get_content()
+  rv = ""
+  newCS_List = newCS.split(char(10))[0:-1]
+  oldCS_List = oldCS.split(char(10))[0:-1]
+  biggestPathLen = 0
+  for j in oldCS_List
+		tmp=j.split(" ")[0].len
+		if tmp>biggestPathLen then biggestPathLen=tmp
+  end for
+	flag = 0
+	colMain = colFFF
+	colSize1 = col2F2
+	colSize2 = col2F2
+  for s1 in oldCS_List
+    s1_0 = s1.split(" ")[0]
+    s1_1 = s1.split(" ")[-1]
+    for s2 in newCS_List
+      s2_0 = s2.split(" ")[0]
+      s2_1 = s2.split(" ")[-1]
+      colSize2 = col2F2
+      if s1_0 == s2_0 then
+        if s1_1 != s2_1 then colSize2 = colF22
+        if s1_1 != s2_1 then rv = rv + colSize1+fillS(s1_1,12,0)+" "+colMain+fillS(s1_0,biggestPathLen,1)+" "+colSize2+fillS(s2_1,12,0)+" "+colMain+s2_0+char(10)
+        newCS_List.remove(newCS_List.indexOf(s2))
+        flag = 1
+        break
+      end if
+    end for
+    colSize2 = colF22
+    if not flag then rv = rv+colSize1+fillS(s1_1,12,0)+" "+colMain+fillS(s1_0,biggestPathLen,1)+" "+colSize2+"   deleted   "+colMain+s1_0+char(10)
+    flag = 0
+  end for
+  dbg(newCS_List.len)
+  if newCS_List.len>0 then
+    for j in newCS_List
+      i1 = j.split(" ")[0]
+      i2 = j.split(" ")[-1]
+      if not flag then rv = rv + colSize1+fillS("new",12,0)+" "+colMain+fillS(" ",biggestPathLen,1)+" "+colSize1+fillS(i2,12,0)+" "+colMain+i1+char(10)
+    end for
+  end if
+  if not flag_loop then print(colFFF+"----------")
+  if rv then print(rv[0:-1])
+  if not flag_loop then print(colFFF+"----------")
+  if not flag_loop then break
+	i=i+1
+	wait(5)
+end while
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//

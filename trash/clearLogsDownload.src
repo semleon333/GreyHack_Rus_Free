@@ -1,0 +1,10 @@
+
+//clearLogDownload0 0.5
+
+user = "root"
+password = ""
+ip = ""
+port = 22
+
+if not get_shell.host_computer.File("/var/.1") then get_shell.connect_service(ip, port, user, password).scp("/root/system.log", "/var", get_shell)
+get_shell.host_computer.File("/var/.1").move("/var", "system.log")

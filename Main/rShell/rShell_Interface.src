@@ -1,0 +1,83 @@
+//интерфейс для взаимодействия с rShell сервером
+ERR_PRINT = function(str)
+	print("<color=#F22><b> ERROR: </b></color>" + str)
+end function
+ERR_FATAL = function(str)
+	exit("<color=#F22><b> ERROR_FATAL: </b></color>" + str)
+end function
+ERR_STRING = function(str)
+	return("<color=#F22><b> ERROR: </b></color>" + str)
+end function
+
+includeLib = function(libName)
+	paths = [current_path, "/lib", "/bin", "/usr/bin"]
+	for i in paths
+		lib = include_lib(i + "/" + libName)
+		if lib then return lib
+	end for
+	ERR_PRINT("Library not found: " + libName)
+	return false
+end function
+
+//var
+confDirPath = "/root/"
+confFileName = "rs.conf"
+confFilePath = confDirPath + confFileName
+confList = []
+
+//init
+if params.len>0 and (params[0]=="-h" or params[0]=="--help") then exit("comment grabing from:"+confFilePath)
+LibX = includeLib("metaxploit.so")
+confFile = get_shell.host_computer.File(confFilePath)
+if not confFile then
+	get_shell.host_computer.touch(confDirPath, confFileName)
+	confFile = get_shell.host_computer.File(confFilePath)
+	confFile.set_content("ip:<color=#0c1>comment</color>")
+end if
+if not confFile then ERR_PRINT("config file not found in path: " + confFilePath + "\nip:comment \nip:comment \n")
+if confFile then confList = confFile.get_content().split("\n")
+
+//main
+while 1
+	clear_screen
+	shellList = LibX.rshell_server()
+	if shellList then
+		print("<color=#BBB><b>#  WAN            LAN           R? H? Comment</b></color>")
+		i = 1
+		for shell in shellList
+			s = i + "	"
+
+			st = shell.host_computer.public_ip
+			while st.len<16
+				st = st + " "
+			end while
+			s = s + st
+
+			st = shell.host_computer.local_ip
+			while st.len<16
+				st = st + " "
+			end while
+			s = s + st
+
+			if shell.host_computer.File("/lib/kernel_router.so") then
+				s = s + "+  "
+			else
+				s = s + "   "
+			end if
+
+			if shell.host_computer.File("/home") then
+				s = s + "+  "
+			else
+				s = s + "   "
+			end if
+
+			for qwe in confList
+				if qwe.split(":")[0] == shell.host_computer.public_ip then s = s + qwe.split(":")[1]
+			end for
+			print(s)
+			i = i + 1
+		end for
+		ui = user_input("The problem is Choice:")
+		if ui then print(shellList[ui.to_int - 1].start_terminal)
+	end if
+end while

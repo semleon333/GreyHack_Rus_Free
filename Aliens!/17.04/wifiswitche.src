@@ -1,0 +1,21 @@
+clr1 = "<color="
+clr2 = "</color>"
+name = clr1+"#c41818><b>Destiny's WIFI Switcher"
+clear_screen
+print(name)
+print(clr1+"#10e32c>Starting...")
+txt_path = user_input(clr1+"#1053e3>Enter path to wifi txt file: <b>"+clr1+"#10e32c>")
+shell = get_shell
+pc = shell.host_computer
+txt = pc.File(txt_path)
+if not txt then exit(clr1+"#c41818>Not found.")
+i = 0
+for line in txt.get_content.split("\n")
+	i = i + 1
+	tmp = line.split(" ")
+	if tmp.len == 3 then
+
+	else
+		print(clr1+"#c41818>Line <b>"+i+"</b> is not formatted correctly.")
+	end if
+end for

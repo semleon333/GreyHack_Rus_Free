@@ -1,0 +1,425 @@
+//сейчас прога для скачивания, впоследствии надо прикрутить регистрацию
+//char aliases
+tab=char(9)
+endl=char(10)
+quote=char(34)
+//color aliases
+colEND="</color>"
+colFFF="<color=#fff>"
+colF22="<color=#f22>"
+col2F2="<color=#2f2>"
+col22F="<color=#22f>"
+colFF2="<color=#ff2>"//yellow
+col2FF="<color=#2ff>"//cyan
+colF2F="<color=#f2f>"//magenta
+
+
+ERR_PRINT = function(str)
+	print("<color=#FF2222><b> ERROR: </b></color>" + str)
+end function
+ERR_FATAL = function(str)
+	exit("<color=#FF2222><b> ERROR_FATAL: </b></color>" + str)
+end function
+ERR_STRING = function(str)
+	return("<color=#FF2222><b> ERROR: </b></color>" + str)
+end function
+prmExist = function(s)//проверка существования параметра s в globals.params
+	if s[1]=="-" then//Ex: --dbg
+		for param in params
+			if param.lower == s.lower then return true
+		end for
+		return false
+	else//Ex: -r from -lar
+		if s.len>2 then ERR_PRINT("wrong format: "+s)
+		s=s[1:]
+		for param in params
+			if param[0]!="-" or param.len<2 or param[1]=="-" then continue
+			for ch in param
+				if ch.lower == s.lower then return true
+			end for
+		end for
+	return false
+end function
+prmTake = function(s)//проверка существования и удаление параметра s в globals.params
+	substr = function(subs)
+		for ch in subs
+			if ch.lower == s.lower then return true
+		end for
+		return false
+	end function
+	if s[1]=="-" then//Ex: --dbg
+		for param in params
+			if param.lower == s.lower then
+				params.remove(params.indexOf(s))
+				return true
+			end if
+		end for
+		return false
+	else//Ex: -r from -lar
+		if s.len>2 then ERR_PRINT("wrong format: "+s)
+		s=s[1:]
+		for param in params
+			if param[0]!="-" or param.len<2 or param[1]=="-" then continue
+			if substr(param) then
+				indx=params.indexOf(param)
+				globals.params[indx]=params[indx].remove(s)
+				if params[indx].len<2 then params.remove(indx)
+				return true
+			end if
+		end for
+	return false
+end function
+dbg = function(str)
+	if flag_dbg then print("<color=#AAA><b>Debug:</b> <color=#FFF>" + str + "</color>")
+end function
+includeLib = function(libName)
+	paths = [current_path, "/lib", "/bin", "/usr/bin"]
+	for i in paths
+		lib = include_lib(i + "/" + libName)
+		if lib then return lib
+	end for
+	ERR_PRINT("Library not found: " + libName)
+	return false
+end function
+connF = function(shell, ip, pass, port = 22, username = "root", type = "ssh")
+	dbg("connF")
+//	dbg(shell.host_computer.public_ip+" "+ip+" "+pass+" "+port+" "+username+" "+type)
+	temp = shell.connect_service(ip.trim, port, username.trim, pass.trim , type.trim)
+	if not temp then ERR_PRINT("connF: Not connected: " + temp)
+//	if temp then dbg(temp.host_computer.public_ip)
+	return temp
+end function
+connChain = function(shellList, oldShell)
+  if not oldShell then oldShell = get_shell
+  for i in range (0, SERVER_LIST.len-1, 2)
+    newShell = connF(oldShell,shellList[i], shellList[i+1])
+    if not newShell then ERR_FATAL("Connection failed")
+  //  dbg(newShell.host_computer.public_ip+" "+newShell.host_computer.local_ip)
+    oldShell = newShell
+  end for
+  return newShell
+end function
+fill = function(s, ln, side="s+", filler=" ")
+	s = str(s)
+	if s.len >= ln then return s
+	filler = filler*ln
+	if side=="s+" then return (s+filler)[:ln]
+	if side=="+s" then return (filler+s)[-ln:]
+end function
+form = function(list)
+	rv=""
+	for l in list
+		if typeof(l)=="string" then
+			rv=rv+l
+			continue
+		end if
+		p0=l[0]
+		if l.len>1 then
+			p1=l[1]
+		else
+			rv=rv+p0
+			continue
+		end if
+		if l.len>2 then
+			p2=l[2]
+		else
+			rv=rv+fill(p0,p1)
+			continue
+		end if
+		if l.len>3 then
+			p3=l[3]
+		else
+			rv=rv+fill(p0,p1,p2)
+			continue
+		end if
+		rv=rv+fill(p0,p1,p2,p3)
+	end for
+	return rv
+end function
+
+choice = {}
+choice.list123 = function(choices, default = -1)
+	c=0
+	for choice in choices
+		if c==0 then
+			print("<color=#ff2><b>"+choices[0]+"</b>")
+		else
+			print("<color=#ff2><b>["+fill(c+"]", 4)+"</b><color=#fff>"+choices[c])
+		end if
+		c=c+1
+	end for
+	prompt="> "
+	if default>-1 then prompt="[default="+default+"] > "
+	while 1
+		user_choice = user_input(colFF2+prompt+colFFF)
+		if user_choice.len==0 and default>-1 then return default
+		user_choice = user_choice.to_int
+		if not typeof(user_choice)=="number" or user_choice<1 or user_choice>=c then
+			ERR_PRINT("Not a valid choice")
+			continue
+		end if
+		return user_choice
+	end while
+end function
+choice.yesno = function(default, prompt = "")
+	if prompt.len > 0 then print("<b>"+prompt+"</b>")
+	if default then
+		prompt = "[Enter = Yes] > "
+	else
+		prompt = "[Enter = No] > "
+	end if
+	while 1
+		resp = user_input(prompt)
+		if resp.len == 0 then return default
+		if resp.lower[0] == "y" then return true
+		if resp.lower[0] == "n" then return false
+	end while
+end function
+
+updateСheckF = function()
+	comVersionsF = function(versionOnServS)
+	  dbg("comVersionsF")
+		dbg("versionOnServS " + versionOnServS)
+		dbg("PROGRAM.VERSION_S " + PROGRAM.VERSION_S)
+		versionOnServL = []
+		version_prog = []
+		S = PROGRAM.VERSION_S.split(".")
+		for s in S
+			version_prog.push(s.to_int())
+		end for
+		for s in versionOnServS.split(".")
+			versionOnServL.push(s.to_int())
+		end for
+		dbg("versionOnServL " + versionOnServL)
+		dbg("version_prog " + version_prog)
+		for i in range(0, versionOnServL.len - 1)
+			if versionOnServL[i] > version_prog[i] then return true
+			if versionOnServL[i] < version_prog[i] then return false
+		end for
+		return false
+	end function
+	updateProgramF = function(versionFile)
+		dbg("updateProgramF")
+		programStorDirOnServFile = SERVER_HOST.File(programsStorDirOnServPath + PROGRAM.NAME)
+		if not programStorDirOnServFile then ERR_FATAL("New version file not found")
+		dbg("programStorDirOnServFile " + programStorDirOnServFile.path)
+		SERVER_SHELL.scp(programStorDirOnServFile.path, current_path, shell)
+		if program_path.split("/")[-1] == PROGRAM.NAME then
+			shell.launch(current_path + "/" + PROGRAM.NAME)
+		else
+			shell.launch(current_path + "/" + PROGRAM.NAME, "--deleting " + program_path)
+		end if
+		exit()
+	end function
+
+	print(colFF2+"start update")
+	if not active_user == "root" then print("<color=#FF2222>Run from <b>root</b></color>")
+	if params.len > 0 and params[0] == "--deleting" then
+		if host.File(params[1]) then
+			host.File(params[1]).delete
+			print("Old version deleted")
+		end if
+	end if
+	if not SERVER_SHELL then ERR_FATAL("Server not available")
+  versionFile = SERVER_HOST.File(VER_ON_SERV_PATH)
+	dbg("versionFile: " + versionFile)
+	if not versionFile then ERR_FATAL("No versionFile on server")
+	if versionFile.get_content().split(".").len != 3 then ERR_FATAL("versionFile on server incorrect")
+
+	co_versionFile = SERVER_HOST.File(PROGRAM.CO_VER_PATH)
+	dbg("versionFile: " + co_versionFile)
+	if not co_versionFile then ERR_FATAL("No versionFile on server")
+	if co_versionFile.get_content().split(".").len != 3 then ERR_FATAL("versionFile on server incorrect")
+	dbg("versionFile: " + co_versionFile)
+	if comVersionsF(co_versionFile.get_content()) then
+		if user_input("???").trim != SERVER_SHELL.host_computer.File(DOWNLOAD_DIR_PATH+"download_pass").get_content() then
+			print("get")
+			wait
+			print("the")
+			wait
+			print("<color=#A44>Fuck</color>")
+			wait
+			exit("<color=#F22>OUT</color>")
+		end if
+	end if
+
+	if comVersionsF(versionFile.get_content()) then updateProgramF()
+	print(colFF2+"end update")
+	wait
+end function
+
+
+//local functions
+
+
+isInList=function(unit,list)
+	for i in list
+		if i.trim==unit.trim then return 1
+	end for
+	return 0
+end function
+
+
+
+sp="<size=19><align=center><color=#0000><mark=#00000000>.</mark></color>"
+ep="<color=#0000><mark=#00000000>.</mark></color>"
+imgPrintList=function(list)
+  rv=[]
+  for i in list
+    s=""
+    for j in i.split(" ")
+      s=s+"<mark=#"+j+">  "
+    end for
+    rv.push(sp+s+ep)
+  end for
+  return rv
+end function
+
+printLogo = function()
+	print(endl*2+imgPrintList(logoArr).join(char(10)))
+	print("<align=center><color=#FFF>"+" "*20+NAME_VER)
+end function
+
+//	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/
+//	//////////////////////////////// M A I N //////////////////////////////////
+//	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/	/
+
+
+logoArr=[]
+logoArr.push("00000000 ffffffff ffffffff ffffffff 00000000 00000000 ffffffff 00000000 00000000 ffffffff 00000000 ffffffff ffffffff ffffffff 00000000 00000000")
+logoArr.push("ffffffff 00000000 00000000 00000000 ffffffff 00000000 ffffffff 00000000 00000000 ffffffff 00000000 ffffffff 00000000 00000000 ffffffff 00000000")
+logoArr.push("003aa6ff 00000000 00000000 00000000 00000000 00000000 003aa6ff 003aa6ff 003aa6ff 003aa6ff 00000000 003aa6ff 00000000 00000000 003aa6ff 00000000")
+logoArr.push("003aa6ff 00000000 003aa6ff 003aa6ff 003aa6ff 00000000 003aa6ff 00000000 00000000 003aa6ff 00000000 003aa6ff 003aa6ff 003aa6ff 00000000 00000000")
+logoArr.push("d52a1eff 00000000 00000000 00000000 d52a1eff 00000000 d52a1eff 00000000 00000000 d52a1eff 00000000 d52a1eff 00000000 00000000 d52a1eff 00000000")
+logoArr.push("00000000 d52a1eff d52a1eff d52a1eff d52a1eff 00000000 d52a1eff 00000000 00000000 d52a1eff 00000000 d52a1eff 00000000 00000000 d52a1eff 00000000")
+
+
+//---Var---//
+shell = get_shell
+host = get_shell.host_computer
+flag_dbg = false
+
+SERVER_LIST = [] //LIST OF "ip","SSHpass","ip","SSHpass"...
+
+PROGRAM = {}
+PROGRAM.NAME = "downloaderGHR"
+PROGRAM.VERSION_S = "1.3.0"
+NAME_VER = PROGRAM.NAME+" v"+PROGRAM.VERSION_S
+programsStorDirOnServPath = "/programs/"+PROGRAM.NAME+"/"
+VER_ON_SERV_PATH = programsStorDirOnServPath+"ver"
+PROGRAM.CO_VER_PATH = programsStorDirOnServPath+"ver_co"
+
+DOWNLOAD_DIR_PATH = "/programs/download/rus/"
+DOWNLOAD_NONRUS_DIR_PATH = "/programs/download/nonrus/"
+
+//---Init---//
+clear_screen
+print("Current user: "+active_user)
+//if prmTake("--dbg") or prmTake("--debug") then flag_dbg = true
+//connect +log clear
+dbg(NAME_VER)
+dbg(programsStorDirOnServPath)
+dbg(VER_ON_SERV_PATH)
+dbg(PROGRAM.CO_VER_PATH)
+if host.File("/var/system.log") then host.File("/var/system.log").move("/var/", ".qEuXCmvxMrwNfzO")
+SERVER_SHELL = connChain(SERVER_LIST)
+if host.File("/var/.qEuXCmvxMrwNfzO") then host.File("/var/.qEuXCmvxMrwNfzO").move("/var/", "system.log")
+//
+if not SERVER_SHELL then ERR_FATAL("server not available")
+SERVER_HOST = SERVER_SHELL.host_computer
+updateСheckF()
+
+clear_screen
+printLogo()
+print()
+print("parol` v nashem dise, menia mozno naiti v of canale igri")
+inputPass=user_input(colFF2+"enter pass > "+colFFF)
+flag_nonrus=0
+flag_rus=0
+if inputPass == SERVER_SHELL.host_computer.File(DOWNLOAD_DIR_PATH+"download_pass").get_content() then
+	flag_nonrus=1
+	DOWNLOAD_FINAL_DIR_PATH=DOWNLOAD_DIR_PATH
+end if
+if inputPass == SERVER_SHELL.host_computer.File(DOWNLOAD_NONRUS_DIR_PATH+"download_pass").get_content() then
+	flag_rus=1
+	DOWNLOAD_FINAL_DIR_PATH=DOWNLOAD_NONRUS_DIR_PATH
+end if
+if not (flag_nonrus or flag_rus) then
+	print("get")
+	wait
+	print("The")
+	wait
+	print("<color=#A44>FUCK</color>")
+	wait
+	exit("<color=#F22>! OUT !</color>")
+end if
+
+
+
+//---Main cycle---//
+while 1
+	aboutList=[]
+	clear_screen
+	printLogo()
+	print()
+	foldersOnServer = SERVER_SHELL.host_computer.File("/programs/").get_folders
+	filesOnServer = SERVER_SHELL.host_computer.File("/programs/").get_files
+	choiceList = ["<size=19><align=center><color=#2ff>The Files</color>"+endl*2]
+
+	for file in filesOnServer
+		aboutFile=SERVER_SHELL.host_computer.File("/programs/about/"+file.name)
+		if aboutFile then
+			aboutList.push(aboutFile.get_content)
+		else
+			aboutList.push(" ")
+		end if
+	end for
+
+	for i in foldersOnServer
+		prgmFile=SERVER_SHELL.host_computer.File(i.path+"/"+i.name)
+		if prgmFile then
+			filesOnServer.push(prgmFile)
+			aboutFile=SERVER_SHELL.host_computer.File(i.path+"/about")
+			if aboutFile then
+				aboutList.push(aboutFile.get_content)
+			else
+				aboutList.push(" ")
+			end if
+		end if
+	end for
+
+
+	blacklist=SERVER_HOST.File(DOWNLOAD_FINAL_DIR_PATH+"blacklist")
+	if blacklist and blacklist.len>0 then
+		list=blacklist.get_content.split(endl)
+		i=0
+		while i<filesOnServer.len-1
+			if isInList(filesOnServer[i].name,list) then
+				filesOnServer.remove(i)
+				continue
+			end if
+			i=i+1
+		end while
+	end if
+
+	i=0
+	for file in filesOnServer
+		choiceList.push(char(9)+file.name+endl+"        "+aboutList[i])
+		i=i+1
+	end for
+	choiceNum = choice.list123(choiceList, "Exit")
+	if choiceNum == "Exit" then exit()
+
+	SERVER_SHELL.scp(filesOnServer[choiceNum-1].path, current_path, shell)
+end while
+
+
+
+
+
+
+
+
+
+
+//

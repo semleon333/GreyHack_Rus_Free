@@ -1,0 +1,236 @@
+//Shop settings
+AllowUpload = true //=>  used to turn on and off the upload ability for you and anyone else using the shop
+VerifySellerIdentity = true //=> used to turn on and off if players can put other names than their own as the seller
+RestrictDelete = true //=> used to turn on and off if players can delete uploads from other players
+ShopServerIP = "123.123.123.123" //=>  this is where you put the IP for the rented server you want to host the shop on
+ShopServerPort = 22 //=>  this is where you put the port number for the rented shop server
+ShopServerUser = "root" //=>  this is where you put the username you wish to use on the rented shop server
+ShopServerPass = "password" //=>  this is where you put the password for the rented shop server
+ShopOwnerBTC = "Username123" //=>  this is where you put your BTC account username
+SecretShopKey = "1234567890abcdefghijklmnopqrstuvwxyz" //=>  this is where you put your SecretShopKey that you can view by using ""BTC login"" in the BTC client
+//Shop settings
+
+//Appearance settings
+ShopName = "<B><u>* OPEN SOURCE SHOP TEMPLATE *" //=>  this is where you choose the name for your shop
+COLOR_1 = "<color=#3FFF4B>" //=>  the color settings are used to change the shop colors, you change the hex values to change colors
+COLOR_2 = "<color=#ae0487>"
+COLOR_3 = "<color=#24A07B>"
+COLOR_4 = "<color=#69E59D>"
+COLOR_5 = "<color=#4B8F82>"
+//Appearance settings
+
+//File settings
+FOLDERS = ["TOOLS","VIRUSES","SOURCES","OTHERS"] //=>  this is where you change what folders you want to display in your shop and how many you want, you can add and remove in the list as well
+//File settings
+
+
+CMDS = {}
+if launch_path.split("/")[-1] == "sudo" then exit(COLOR_2+"Do not run BTCshop with ""sudo""! Use ""sudo -s"" if you want to run it as root.")
+ShopServer = get_shell.connect_service(ShopServerIP,ShopServerPort,ShopServerUser,ShopServerPass)
+if not ShopServer then exit(COLOR_2+"Shop can not connect.")
+ShopComputer = ShopServer.host_computer
+Computer = get_shell.host_computer
+
+if not ShopComputer.File("/server/shop") then ShopComputer.create_folder("/server","shop")
+if not ShopComputer.File("/server/info") then ShopComputer.create_folder("/server","info")
+
+
+//Client validation & file transfer
+if params.len == 6 then
+	//[taker]+[money]+[info]+[random]+[owner]+[key]
+	if params[5] != md5(params[0]+params[1]+params[2]+params[3]+params[4]+SecretShopKey) then exit(COLOR_2+"Shop Security Values Do Not Match")
+
+	if params[2] == "placeholder_uploader" then
+		UploadFile = null
+		while true
+			file = user_input("[13 characters] File to upload#")
+			UploadFile = Computer.File(file)
+			if not UploadFile then
+				print(COLOR_2+"File not found")
+				continue
+			end if
+			if UploadFile.is_folder then
+				print(COLOR_2+"File can not be a folder")
+				continue
+			end if
+			if ShopComputer.File("/server/info/"+UploadFile.name+".info") then
+				print(COLOR_2+UploadFile.name+" already exist in the shop")
+				continue
+			end if
+			if UploadFile.name.len <= 13 then break
+			print(COLOR_2+"File name is " + UploadFile.name.len + " characters, the limit is 13. The path can be absolute or relative.")
+		end while
+
+		seller = params[0]
+		if not VerifySellerIdentity then seller = user_input("Seller BTC account#")
+		price = str(floor(user_input("File price#").val))
+		downloads = "0"
+		if sign(price.val) != 1 or price.val == 0 then exit(COLOR_2+"Not a valid price.")
+
+		description = null
+		while true
+			description = user_input("[40 characters] File description#")
+			if description.len <= 40 then break
+			print(COLOR_2+"You used " + description.len + " characters, the limit is 40.")
+		end while
+
+		for i in range(0,FOLDERS.len-1)
+			if not ShopComputer.File("/server/shop/"+FOLDERS[i]) then ShopComputer.create_folder("/server/shop",FOLDERS[i])
+			print("["+i+"]  "+FOLDERS[i])
+		end for
+		target = FOLDERS[user_input("Select upload folder NR#").val]
+		upload = get_shell.scp(UploadFile.path, "/server/shop/"+target, ShopServer)
+		if not upload then exit(COLOR_2+"Upload failed")
+
+		ShopComputer.touch("/server/info", UploadFile.name+".info")
+		ShopComputer.File("/server/info/"+UploadFile.name+".info").set_content(seller+"\n"+price+"\n"+downloads+"\n"+description)
+		ShopComputer.File("/").chmod("u-rwx",1)
+		ShopComputer.File("/").chmod("g-rwx",1)
+		ShopComputer.File("/").chmod("o-rwx",1)
+		exit(COLOR_1+"File uploaded")
+
+	else if params[2] == "placeholder_deleter" then
+		file_path = user_input(COLOR_1+"Specify the menu path to the file you would like to delete.\nExample: TOOLS/my_script\nPath#")
+		file = ShopComputer.File("/server/shop/"+file_path)
+		InfoFile = ShopComputer.File("/server/info/"+file_path.split("/")[-1]+".info")
+		if not file or not InfoFile then exit(COLOR_2+"File could not be found.")
+		InfoLine = InfoFile.get_content.split("\n")
+		if RestrictDelete and params[0] != InfoLine[0] then exit(COLOR_2+"You don't own this file.")
+		user_input(COLOR_1+"Are you sure you want to remove "+file_path.split("/")[-1]+" from the shop?\nPress enter to continue...")
+		InfoFile.delete
+		file.delete
+		exit(COLOR_1+"File deleted from shop.")
+	end if
+
+	download = ShopServer.scp(params[2], home_dir, get_shell)
+	if not download then exit(COLOR_2+"Download failed")
+	InfoFile = ShopServer.host_computer.File("/server/info/"+params[2].split("/")[-1]+".info")
+	InfoLine = InfoFile.get_content.split("\n")
+	InfoFile.set_content(InfoLine[0]+"\n"+InfoLine[1]+"\n"+str(InfoLine[2].val+1)+"\n"+InfoLine[3])
+	exit(COLOR_1+"File Downloaded To " + home_dir)
+end if
+//Client validation & file transfer
+
+//Shop options
+//HELP
+CMDS.HELP = function()
+	return ("
+	<b><u>Guide to help you setup your own shop with the ShopTemplate.src.</u></b>\n
+	<b>1. Download the ShopTemplate.src from 11.170.0.227</b>
+	<b>2. Open the file with CodeEditor.exe</b>
+
+	<b>3. At the top you will find 3 types of settings, we will start with the ""Shop settings"":</b>
+	3.1 AllowUpload = true/false => used to turn on and off the upload ability for you and anyone else using the shop
+	3.2 ShopServerIP = ""123.123.123.123"" => this is where you put the IP for the rented server you want to host the shop on
+	3.3 ShopServerPort = 22 => this is where you put the port number for the rented shop server
+	3.4 ShopServerUser = ""root"" => this is where you put the username you wish to use on the rented shop server
+	3.5 ShopServerPass = ""password"" => this is where you put the password for the rented shop server
+	3.6 ShopOwnerBTC = ""Username123"" => this is where you put your BTC account username
+	3.7 SecretShopKey = ""123"" => this is where you put your SecretShopKey that you can view by using ""BTC login"" in the BTC client
+
+	<b>4. Next are the ""Appearance settings"":</b>
+	4.1 ShopName = ""* OPEN SOURCE SHOP TEMPLATE *"" => this is where you choose the name for your shop
+	4.2 COLOR_1 = ""color=#3FFF4B"" => the color settings are used to change the shop colors, you change the hex values to change colors
+
+	<b>5. Next are the ""File settings"":</b>
+	5.1 FOLDERS = [""TOOLS"",""VIRUSES"",""OTHERS""] => this is where you change what folders you want to display in your shop and how many you want, you can add and remove in the list as well
+	")
+end function
+
+//SHOP
+CMDS.SHOP = function()
+	MAIN(ShopComputer.File("/server/shop").get_folders,[""])
+	return ""
+end function
+
+user_validate = function(info)
+	seller = user_input("Seller BTC account#")
+	print(COLOR_1+"We are using the BTC client to verify users who upload to this shop by charging 0 BTC.\nLaunching BTC...")
+	random = str(rnd())
+	//BTC: [action] [buyer] [pass] [seller] [money] [shop_data]
+	exit(get_shell.launch(home_dir+"/BTC", "transfer "+seller+" client_user_input_password "+seller+" "+"0"+" "+info+":"+random+":"+ShopOwnerBTC + ":" + md5(SecretShopKey+seller+"0"+info+random+ShopOwnerBTC)))
+end function
+
+//UPLOAD
+CMDS.UPLOAD = function()
+	if not AllowUpload then exit(COLOR_2+"Upload is disabled, enable it in shop settings in the shop source.")
+	user_validate("placeholder_uploader")
+end function
+
+//DELETE
+CMDS.DELETE = function()
+	user_validate("placeholder_deleter")
+end function
+
+//LOGIN
+CMDS.LOGIN = function()
+	if user_input("Server password#",1) == ShopServerPass then ShopServer.start_terminal
+end function
+//Shop options
+
+
+Space = " "*70
+LongLine = COLOR_4+"="*59
+INFORMATION = ["Welcome to a open source shop with","BTC client support.","Use the help menu for information","on how you can customize your own shop."]
+
+//BTC client transaction
+BTC = function(file)
+	if not Computer.File(home_dir+"/BTC") then exit(COLOR_2+home_dir+"/BTC missing. Download the BTC client from 11.170.0.227")
+	if not has_permission(Computer.File(home_dir), "w") then exit(COLOR_2+"Missing permission to download to "+home_dir)
+	InfoFile = ShopComputer.File("/server/info/"+file.name+".info").get_content.split("\n")
+	user_input("Buying: "+ file.name + " for: " + InfoFile[1] + " BTC. Starting BTC client...\nPress enter to continue...")
+	//BTC: [action] [payee] [pass] [taker] [money] [shop_data]
+	random = str(rnd())
+	exit(get_shell.launch(home_dir+"/BTC", "transfer client_user_input_username client_user_input_password " + InfoFile[0] + " " + InfoFile[1] + " " + file.path + ":" + random + ":" + ShopOwnerBTC + ":" + md5(SecretShopKey+InfoFile[0]+InfoFile[1]+file.path+random+ShopOwnerBTC)))
+end function
+
+//Menu select
+MAIN = function(MENUS,INFO)
+	MENUS = MENUS + ["","BACK"]
+
+	print("\n\n\n\n"+COLOR_5+Space[ShopName.len:49]+ShopName)
+	print(LongLine)
+	print(Space[:20]+COLOR_1+"| WELCOME TO MY SHOP")
+	print(LongLine)
+
+	for i in range(0,MENUS.len-1)
+		InfoFile = null
+		if INFO.len-1 < i then INFO = INFO + [""]
+		if MENUS.len == 2 then INFO[i] = "THIS FOLDER IS EMPTY"
+		menu = MENUS[i]
+		if typeof(menu) == "file" then
+			menu = menu.name
+			InfoFile = ShopComputer.File("/server/info/"+menu+".info")
+			if InfoFile then INFO[i] = "Seller: "+InfoFile.get_content.split("\n")[0]
+		end if
+
+		if menu == "" then print(menu)
+		nr = str("["+i+"]  ")
+		if menu != "" then print(COLOR_1+nr+menu+Space[:20-(menu.len+nr.len)]+COLOR_4+"| "+COLOR_3+INFO[i])
+		if InfoFile then
+			InfoLine = InfoFile.get_content.split("\n")
+			print(COLOR_1+"|"+Space[:19]+COLOR_4+"| "+COLOR_3+"Price: "+InfoLine[1])
+			print(COLOR_1+"|"+Space[:19]+COLOR_4+"| "+COLOR_3+"Downloads: "+InfoLine[2])
+			print(COLOR_1+"|"+Space[:19]+COLOR_4+"| "+COLOR_3+InfoLine[3])
+		end if
+	end for
+
+	OPTION = ""
+	while OPTION == ""
+		nr = user_input("NR#").to_int
+		if typeof(nr) != "number" then continue
+		if MENUS.len > nr then OPTION = MENUS[nr]
+	end while
+
+	if OPTION == "BACK" then
+		MAIN(CMDS.indexes,INFORMATION)
+	else if CMDS.hasIndex(OPTION) then
+		OUTPUT = CMDS[OPTION]
+		print(OUTPUT)
+	else if ShopComputer.File(OPTION.path) then
+		if ShopComputer.File(OPTION.path).is_folder then MAIN(OPTION.get_files,[""])
+		if not ShopComputer.File(OPTION.path).is_folder then BTC(OPTION)
+	end if
+end function
+
+MAIN(CMDS.indexes,INFORMATION)

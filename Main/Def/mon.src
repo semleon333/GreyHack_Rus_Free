@@ -1,0 +1,87 @@
+//показывает открытие закрытие процессов на устройстве и
+//wipeFiles = ["Bank.txt","Mail.txt"]
+logging = function(s)
+  logPath = globals.programDir + "/log.txt"
+  logFile = comp.File(logPath)
+end function
+wipe = function(dir, file)
+  comp.File(dir + file).set_content("")
+  print("<color=#888888>Wiped " + dir + file + "</color>")
+//  logging(dir+file)
+end function
+s_to_list = function(s)
+  s = s.replace(char(10), " ")//del ENTER
+  s = s.split(" ")//split substrings
+  return s
+end function
+printList = function(List)
+  for i in List
+    print(i)
+  end for
+end function
+FindProc = function(list1, list2, CO)
+  returnValue = []
+  for i in range(0, list1.len-1, 5)
+  a = true
+    for j in range(0, list2.len -1, 5)
+      if (list2[j+1] == list1[i+1]) and (list2[j+4] == list1[i+4]) then
+        a = false
+        break
+      end if
+    end for
+  if a then returnValue.push(CO + list1[i+1] + " " + list1[i] + " " + list1[i+4] + "</color>")
+  end for
+  return returnValue
+end function
+procCheck = function(plOld)
+  plNew = s_to_list(get_shell.host_computer.show_procs)
+  globals.procList = plNew
+	closed = FindProc(plOld, plNew, "<color=#ff4242>Closed ")
+	if closed then printList(closed)
+  opened = FindProc(plNew, plOld, "<color=#42ff42>Opened ")
+	if opened then printList(opened)
+	//USER 0, PID 1, CPU 2, MEM 3, COMMAND 4
+	//root    4568   0.0%   1.4%   Xorg
+end function
+
+//Var//
+shell = get_shell
+comp = shell.host_computer
+//programDir = "/TotallyNormalDir"
+wipeDirs = []
+wipeFiles = ["Bank.txt","Mail.txt"]
+
+//Init//
+clear_screen
+colFFF = "<color=#fff>"
+if params.len>0 and (params[0]=="--help" or params[0]=="-h") then
+	print(colFFF+"mon")
+	exit(colFFF+"rewrite Bank,Mail; show opening/closing process")
+end if
+if not get_router("IP_YOUR_DRM_SERVER").ping_port(1) then exit("Lars say NO")
+
+if comp.File("/home") then//wipeFiles
+  usersDir = comp.File("/home").get_folders
+  userDir = usersDir[0]
+  wipeDirs.push(userDir)
+end if
+wipeDirs.push(comp.File("/root"))
+procList = s_to_list(comp.show_procs)//Proc
+
+// / / MAIN / / //
+while 1
+  for dir in wipeDirs // Users Config txt
+  	for file in wipeFiles
+  		if comp.File(dir.path + "/Config/" + file) then
+        if comp.File(dir.path + "/Config/" + file).get_content != "" then wipe(dir.path + "/Config/", file)
+        end if
+      end if
+  	end for
+  end for
+  if comp.File("/etc/passwd") then // passwd
+    if comp.File("/etc/passwd").get_content != "" then wipe("/etc/", "passwd")
+    end if
+  end if
+  procCheck(procList)
+  wait(0.2)
+end while

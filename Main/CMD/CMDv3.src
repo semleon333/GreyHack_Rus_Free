@@ -1,0 +1,355 @@
+//тут почти идеально написаная функция changePasswordF, в финале надо все функции реализовывать примерно так
+clear_screen
+//cmd
+
+// Var //
+SHELL_CURRENT = get_shell
+host = get_shell.host_computer
+flag_dbg = false
+PARAMS = []
+SHELLS = []
+COMPUTERS = []
+FILES = []
+
+ERR_PRINT = function(str)
+	print("<color=#FF2222><b> ERROR: </b></color>" + str)
+end function
+ERR_FATAL = function(str)
+	exit("<color=#FF2222><b> ERROR_FATAL: </b></color>" + str)
+end function
+ERR_STRING = function(str)
+	return("<color=#FF2222><b> ERROR: </b></color>" + str)
+end function
+
+dbg = function(str)
+	if flag_dbg then print("<color=#AAAAAA><b>Debug:</b> <color=#FFFFFF>" + str + "</color>")
+end function
+
+includeLib = function(libName)
+	p = [current_path, "/lib", "/bin", "/usr/bin"]
+	for i in p
+		lib = include_lib(i + "/" + libName)
+		if lib then return lib
+	end for
+	ERROR("Library not found: " + libName)
+	return false
+end function
+
+existParamF = function(paramType)
+	for param in params
+		if param.lower == paramType.lower then return true
+	end for
+	return false
+end function
+
+smartParamF = function(l)
+	dbg("smartParamF")
+	map = {"shellObj":0, "shell_targetObj":0, "passwordS":0, "computerObj":0, "fileObj":0, "userS":0}
+	//			-s 						-s2 								-p							-c								-f					-u
+	id = l.indexOf("-s1")
+	if id != null then map.shellObj = SHELLS(l[id+1]).to_int
+	id = l.indexOf("-s2")
+	if id != null then map.shell_targetObj = l[id+1]
+	id = l.indexOf("-p")
+	if id != null then map.passwordS = l[id+1]
+	id = l.indexOf("-c")
+	if id != null then map.computerObj = COMPUTERS(l[id+1]).to_int
+	id = l.indexOf("-f")
+	if id != null then map.fileObj = FILES(l[id+1]).to_int
+	id = l.indexOf("-u")
+	if id != null then map.userS = l[id+1]
+	id = l.indexOf("-s")
+	if id != null then map.userS = "root"
+	dbg(map)
+	return map
+end function
+
+
+
+
+
+
+
+
+CMD = {}
+
+//System Functions
+CMD.clearScreenF = function(params)
+	clear_screen
+end function
+CMD.exitF = function(params)
+	exit
+end function
+CMD.currentShellF = function(params)
+	return SHELL_CURRENT.host_computer.public_ip + " " + SHELL_CURRENT.host_computer.local_ip
+end function
+//Shell
+
+//Computer
+CMD.closeProgramF = function(params)
+	dbg("	CMD.closeProgramF")
+	dbg("params: " + params)
+	if not params then params = PARAMS
+	dbg("params: " + params)
+	if params.len == 0 or params[0] == "-h" or params[0] == "--help" then return command_info("kill_usage")
+	rv = SHELL_CURRENT.host_computer.close_program(params[0].to_int)
+	if rv == true then return "process closed"
+	if rv then return ERR_STRING(rv)
+	return ERR_STRING("process not found")
+end function
+CMD.processListF = function(params)
+	dbg("	CMD.processListF")
+	dbg("params: " + params)
+	if not params then params = PARAMS
+	dbg("params: " + params)
+	smartParamF(params)
+  rv = SHELL_CURRENT.host_computer.show_procs
+  return (format_columns(rv))
+end function
+CMD.ipF = function(params)
+	dbg("	CMD.ipF")
+	dbg("params: " + params)
+	if not params then params = PARAMS
+	dbg("params: " + params)
+  rv = SHELL_CURRENT.host_computer.public_ip + " " + SHELL_CURRENT.host_computer.local_ip
+  return rv
+end function
+CMD.touchF = function(params)
+	dbg("	CMD.touchF")
+	dbg("params: " + params)
+	if not params then params = PARAMS
+	dbg("params: " + params)
+	if params.len == 0 or params[0] == "-h" or params[0] == "--help" then return command_info("touch_usage")
+	pathFile = params[0]
+	dbg(pathFile)
+	pathParent = parent_path(pathFile)
+	dbg(pathParent)
+	if pathParent == pathFile then pathParent = current_path
+	parent = SHELL_CURRENT.host_computer.File(pathParent)
+	dbg("parent: " + parent)
+	if not parent then exit("touch: " + pathParent + " not found")
+	if not parent.has_permission("w") then exit("touch: permission denied")
+	arrayPath = pathFile.split("/")
+	dbg(parent.path)
+	dbg(arrayPath)
+	output = SHELL_CURRENT.host_computer.touch(parent.path, arrayPath[arrayPath.len - 1])
+	dbg(output)
+	if output and output != 1 then return ERR_STRING(output)
+	return output
+end function
+CMD.wifiNetworksF = function(params)
+	dbg("	CMD.wifiF")
+	dbg("params: " + params)
+	if not params then params = PARAMS
+	dbg("params: " + params)
+	if params.len != 0 and (params[0] == "-h" or params[0] == "--help") then return command_info("touch_usage")
+	net = SHELL_CURRENT.host_computer.wifi_networks("wlan0")
+	resS = ""
+	for i in net
+		s = i.replace(char(10), "")
+		l = s.split(" ")
+    resS = resS + l[1] + "	" + l[0] + "	" + l[2] + "\n"
+  end for
+	resS = format_columns(resS)
+	return resS.trim[0:-1]
+end function
+CMD.changePasswordF = function(params)
+	dbg("	CMD.changePasswordF")
+	dbg("params: " + params)
+	if not params then params = PARAMS
+	dbg("params: " + params)
+	shellObj = 0
+	computerObj = 0
+	user=""
+	password=""
+	prmM = smartParamF(params)
+	if prmM.userS then user=prmM.userS
+	if prmM.shellObj then shellObj=prmM.shellObj
+	if prmM.passwordS then password=prmM.passwordS
+	if prmM.computerObj then computerObj=prmM.computerObj
+	if not shellObj then shellObj=get_shell
+	dbg(shellObj)
+	if not computerObj then computerObj=shellObj.host_computer
+	dbg(computerObj)
+	dbg(user+" "+password)
+	if not (user and password) then return "changePasswordF -u user -p password"
+	flag = computerObj.change_password(user,password)
+	if flag then return "password changed"
+	if not flag then return ERR_STRING("password changed")
+end function
+
+
+//
+CMD.whoIsF = function(params)
+	dbg("	CMD.whoIsF")
+	dbg("params: " + params)
+	if not params then params = PARAMS
+	dbg("params: " + params)
+	if params == null then params = [] //??? на случай вызова внутри программы с мусором в глобале
+	dbg("params: " + params)
+  if params.len != 1 or params[0] == "-h" or params[0] == "--help" then return command_info("whois_usage")
+	address = params[0]
+  return whois(address)
+end function
+CMD.helpF = function(params)
+	dbg("	CMD.helpF")
+	s = ""
+	map = CMD.NAMES
+	q = function(map)
+		for i in map
+			dbg("i: " + i)
+			if typeof(i["value"]) == "map" then
+				s = s + i["key"] + "\n" + q(i["value"]) + "\n"
+				continue
+			end if
+			s = s + i["key"] + " " + i["value"].join("|||") + "\n"
+		end for
+		return s
+	end function
+	s = format_columns(q(map))
+	s = s.replace("|||", " | ")
+	return s.trim
+end function
+CMD.shellListF = function()
+	dbg("shellListF")
+	dbg(SHELLS)
+	s = ""
+	for shell in SHELLS
+		s = s + shell.host_computer.public_ip + shell.host_computer.local_ip + "\n"
+	end for
+	if s == "" then s = "empty"
+	return s
+end function
+CMD.computerListF = function()
+	dbg("computerListF")
+	dbg(COMPUTERS)
+	s = ""
+	for computer in COMPUTERS
+		s = s + computer.public_ip + computer.local_ip + "\n"
+	end for
+	if s == "" then s = "empty"
+	return s
+end function
+CMD.fileListF = function()
+	dbg("fileListF")
+	dbg(FILES)
+	s = ""
+	for file in FILES
+		s = s + file + "\n"
+	end for
+	if s == "" then s = "empty"
+	return s
+end function
+
+
+
+searchValueInMapF = function(map, valueP)
+	for i in map
+//		dbg(i["value"])
+//		dbg(typeof(i["value"]))
+		if typeof(i["value"]) == "map" then
+			rv = searchValueInMapF(i["value"], valueP)
+			if rv then return rv
+			continue
+		end if
+		if typeof(i["value"]) == "list" then
+			index = i["value"].indexOf(valueP)
+			if index != null then return i["value"][0]
+		else
+			if i["value"] == valueP then return i["key"]// remove this ???
+		end if
+	end for
+	return false
+end function
+
+SpaceShellF = function()
+	while 1
+		userInputS = user_input("cmdShell>" + CurrentPath + "#" + " ")
+		dbg("userInputS:" + userInputS)
+//		userInputS = userInputS.trim
+//		dbg("userInputS.trim:" + userInputS)
+		if userInputS.len == 0 then continue
+		userInputL = userInputS.split(" ")
+		dbg("userInputL:" + userInputL)
+		if userInputL then
+			globals.PARAMS = userInputL[1:]
+			dbg("PARAMS:" + PARAMS)
+			dbg("definitionProgram")
+			print(searchValueInMapF(CMD.NAMES, userInputL[0]))
+//			print(functionObj())
+			end if
+		end if
+	end while
+end function
+
+
+
+
+
+CMD.NAMES = {}
+CMD.NAMES.COMPUTER = {}
+CMD.NAMES.COMPUTER.FILE = {}
+CMD.NAMES.push("helpF")
+CMD.NAMES["helpF"] = ["-h", "--help", "help"]
+CMD.NAMES.push("clearScreenF")
+CMD.NAMES["clearScreenF"] = ["clearScreenF", "clearScreen", "clear_screen", "clearscreen", "c", "clear"]
+CMD.NAMES.push("exitF")
+CMD.NAMES["exitF"] = ["exitF", "exit", "e"]
+CMD.NAMES.push("currentShellF")
+CMD.NAMES["currentShellF"] = ["currentShellF", "currentShell", "currentshell", "cs"]
+
+CMD.NAMES.push("shellListF")
+CMD.NAMES["shellListF"] = ["sl", "shellListF", "shellList", "shelllist"]
+CMD.NAMES.push("computerListF")
+CMD.NAMES["computerListF"] = ["cl", "computerListF", "computerList", "computerlist"]
+CMD.NAMES.push("fileListF")
+CMD.NAMES["fileListF"] = ["fl", "fileListF", "fileList", "filelist"]
+
+
+//Gen
+CMD.NAMES.push("whoIsF")
+CMD.NAMES["whoIsF"] = ["whois", "wi"]
+
+//Comp
+CMD.NAMES.COMPUTER.push("closeProgramF")
+CMD.NAMES.COMPUTER["closeProgramF"] = [@CMD.closeProgramF, "closeProgramF", "closeProgram", "closeprogram", "kill", "k"]
+CMD.NAMES.COMPUTER.push("processListF")
+CMD.NAMES.COMPUTER["processListF"] = [@CMD.processListF, "ps", "processlist"]
+CMD.NAMES.COMPUTER.push("ipF")
+CMD.NAMES.COMPUTER["ipF"] = [@CMD.ipF, "ipF", "ip", "123", "123"]
+CMD.NAMES.COMPUTER.push("touchF")
+CMD.NAMES.COMPUTER["touchF"] = ["touchF", "touch"]
+CMD.NAMES.COMPUTER.push("wifiNetworksF")
+CMD.NAMES.COMPUTER["wifiNetworksF"] = ["wifiNetworksF", "wifiF", "wifi"]
+CMD.NAMES.COMPUTER.push("changePasswordF")
+CMD.NAMES.COMPUTER["changePasswordF"] = ["changePasswordF", "changePassword", "changepassword", "passwd"]
+CMD.NAMES.COMPUTER.push("123")
+CMD.NAMES.COMPUTER["123"] = ["123", "123", "123", "123"]
+
+//File
+
+
+
+//	if ALIASES.indexOf(params[0])	???
+
+
+
+
+
+// Init //
+LibX = includeLib("metaxploit.so")
+LibC = includeLib("crypto.so")
+if params.indexOf("-dbg") != null then flag_dbg = true
+
+// Main //
+if params.len != 0 and (params[0] == "-h" or params[0] == "--help") then exit("just run")
+
+print("User: " + active_user)
+if active_user != "root" then
+  rootShell = get_shell("root", user_input("RootPassword: ", true))
+  if not rootShell then exit("Incorrect password")
+  rootShell.launch(program_path)
+  exit()
+end if
+CurrentPath = current_path
+SpaceShellF()

@@ -1,0 +1,431 @@
+//тут применяются if then, думаю в финале надо использовать именно их
+ERROR = function(str)
+	print("<color=#FF2222><b> ERROR: </b></color>" + str)
+end function
+ERRORr = function(str)
+	return "<color=#FF2222><b> ERROR: </b></color>" + str
+end function
+info = function(str)
+	if flag_i then print("<I>  Info: " + str + "</I>")
+end function
+isAParam = function(paramType)
+	for param in params
+		if param.lower == paramType.lower then return true
+	end for
+	return false
+end function
+includeLib = function(libName)
+	p = [current_path, "/lib", "/bin", "/usr/bin"]
+	for i in p
+		lib = include_lib(i + "/" + libName)
+		if lib then return lib
+	end for
+	ERROR("Library not found: " + libName)
+	return false
+end function
+cat = function(params)
+	if (params.len != 1 or params[0] == "-h" or params[0] == "--help") then return command_info("cat_usage")
+	pathFile = params[0]
+	file = shell.host_computer.File(pathFile)
+	if file == null then return "cat: file not found: "+ pathFile
+	if file.is_binary then return "cat: can't open " + file.path + ". Binary file"
+	if not file.has_permission("r") then return "cat: permission denied"
+	return file.content
+end function
+ifconfig = function(params)
+  if params.len != 0 and (params.len != 4 or params[0] == "-h" or params[0] == "--help") then return command_info("ifconfig_usage")
+  computer = shell.host_computer
+  if (params.len == 0) then
+  	router = get_router(computer.public_ip)
+  	if computer.is_network_active then
+  	    lip = computer.local_ip
+      	pip = computer.public_ip
+      	gw = computer.network_gateway
+  	    if computer.active_net_card == "WIFI" then
+  		    output = "\nConnected to Wi-Fi:\nEssid: " + router.essid_name + "\nBssid: " + router.bssid_name // BUG with remote shell
+  		else
+  		    output = "\nEthernet connection:"
+  		end if
+  	else
+  		lip = "0.0.0.0"
+  		pip = "0.0.0.0"
+  		gw = "0.0.0.0"
+  		output = "\nNot connected to the network."
+  	end if
+  	return (output + "\n----------------\nPublic IP: " + pip + "\nLocal IP: " + lip + "\nGateway: " + gw + "\n")
+  else
+  	if params[2] != "gateway" then return command_info("ifconfig_usage")
+  	device = params[0]
+  	address = params[1]
+  	gateway = params[3]
+  	if not is_valid_ip(address) then return "ifconfig: invalid ip address"
+  	if not is_valid_ip(gateway) then return "ifconfig: invalid gateway"
+  	output = computer.connect_ethernet(device, address, gateway)
+  	if output.len > 0 then return output
+  end if
+end function
+kill = function(params)
+  if params.len != 1 or params[0] == "-h" or params[0] == "--help" then return command_info("kill_usage")
+  PID = params[0].to_int
+  if typeof(PID) != "number" then return ("The PID must be a number\n" + command_info("kill_usage"))
+  output = shell.host_computer.close_program(PID)
+  if output == true then return ("Process " + PID + " closed")
+  if output then return output
+  return ("Process " + PID + " not found")
+end function
+ValidateInput = function(input)
+  if input == "-la" or input == "-l" or input == "-a" then return true
+  return false
+end function
+ls = function(params)
+  if params.len > 3 or (params.len == 1 and params[0].indexOf("-") != null and not ValidateInput(params[0])) or (params.len == 2 and not ValidateInput(params[0])) or (params.len == 3 and (not ValidateInput(params[0]) or not ValidateInput(params[1]))) then
+  	return command_info("ls_usage")
+  else
+  	computer = shell.host_computer
+  	folderPath = globals.CurrentPath
+  	if params and params[params.len - 1].indexOf("-") == null then
+  		folderPath = params[params.len - 1]
+  	end if
+  	folder = computer.File(folderPath)
+  	if folder == null then
+  		return "ls: No such file or directory"
+  	else
+  		if not folder.has_permission("r") then
+  			return "ls: permission denied"
+  		else
+  			showHide = 0
+  			if params and params[0].indexOf("a") != null then
+  				showHide = 1
+  			end if
+  			showDetails = 0
+  			if params and params[0].indexOf("l") != null then
+  				showDetails = 1
+  			end if
+  			subFiles = folder.get_folders + folder.get_files
+  			output = ""
+  			for subFile in subFiles
+  				nameFile = subFile.name
+  				permission = subFile.permissions
+  				owner = subFile.owner
+  				size = subFile.size
+  				group = subFile.group
+  				if showHide or nameFile.indexOf(".") != 0 then
+  					if showDetails then
+  						output = output + "\n" + permission + " " + owner + " " + group + " " + size + " 00:00 " + nameFile
+  					else
+  						output = output + "\n" + nameFile
+  					end if
+  				end if
+  			end for
+  			return format_columns(output)
+  		end if
+  	end if
+  end if
+end function
+mkdir = function(params)
+  if params.len != 1 or params[0] == "-h" or params[0] == "--help" then
+  	return (command_info("mkdir_usage"))
+  else
+  	computer = shell.host_computer
+  	pathFile = params[0]
+  	pathParent = parent_path(pathFile)
+  	existFile = computer.File(pathFile)
+  	currentPath = globals.CurrentPath
+  	if pathParent == pathFile then
+  		pathParent = currentPath
+  	end if
+  	parent = computer.File(pathParent)
+  	if parent == null then
+  		return ("mkdir: " + pathParent + " not found")
+  	else if existFile != null then
+  		return ("mkdir: " + existFile.path + " file exists")
+  	else if not parent.has_permission("w") then
+  		return ("mkdir: permission denied")
+  	else
+  		arrayPath = pathFile.split("/")
+  		output = computer.create_folder(parent.path, arrayPath[arrayPath.len - 1])
+  		if output != null and output != 1 then
+  			return (output)
+  		end if
+  	end if
+  end if
+end function
+mv = function(params)
+  if params.len != 2 then
+  	return (command_info("mv_usage"))
+  else
+  	origFile = params[0]
+  	destFolder = params[1]
+  	computer = shell.host_computer
+  	file = computer.File(origFile)
+  	if file == null then
+  		return ("mv: can't find " + origFile)
+  	else
+  		newName = ""
+  		folder = computer.File(destFolder)
+  		if folder == null then
+  			//Check if the user wants to put a new name.
+  			pathParent = parent_path(destFolder)
+  			if pathParent == destFolder then
+  				newName = destFolder
+  				destFolder = file.parent.path
+  				file.move(destFolder, newName)
+  			else
+  				folder = computer.File(pathParent)
+  				newName = destFolder[destFolder.len - (destFolder.len - pathParent.len):]
+  				if newName[0] == "/" then
+  					newName = newName[1:]
+  				end if
+  				if folder == null then
+  					return ("mv: can't copy file. " + destFolder + " doesn't exist.")
+  				end if
+  			end if
+  		end if
+  		if folder != null then
+  			//Check if is trying to copy the file on itself. Ignored.
+  			if file.parent.path != folder.parent.path or file.name != folder.name then
+  				finalDest = folder.path
+  				if(newName.len == 0) then
+  					newName = file.name
+  				end if
+  				if not folder.is_folder then
+  					finalDest = file.parent.path
+  					newName = folder.name
+  				end if
+  				if file.parent.path == folder.parent.path and newName != file.name then
+  					file.rename(newName)
+  				else
+  					file.move(finalDest, newName)
+  				end if
+  			end if
+  		end if
+  	end if
+  end if
+end function
+passwd = function(params)
+  if params.len != 1 or params[0] == "-h" or params[0] == "--help" then return (command_info("passwd_usage"))
+  inputMsg = "Changing password for user " + params[0] +".\nNew password:"
+  inputPass = user_input(inputMsg, true)
+  output = shell.host_computer.change_password(params[0], inputPass)
+  if output == true then return ("password modified OK")
+  if output then return (output)
+  return ("Error: password not modified")
+end function
+ps = function(params)
+  if params.len > 0 then return (command_info("ps_usage"))
+  output = shell.host_computer.show_procs
+  return (format_columns(output))
+end function
+rm = function(params)
+  if params.len < 1 or params.len > 2 or params[0] == "-h" or params[0] == "--help" then return (command_info("rm_usage"))
+  pathFile = params[0]
+  isRecursive = 0
+  if params[0] == "-r" then
+  	if params.len == 1 then return (command_info("rm_usage"))
+  	isRecursive = 1
+  	pathFile = params[1]
+  end if
+  file = shell.host_computer.File(pathFile)
+  if file == null then return ("rm: file not found: "+pathFile)
+  if not file.has_permission("w") then return ("rm: permission denied")
+  if file.is_folder == 1 and isRecursive == 0 then
+  	print("rm: " + file.name + " is a directory")
+  else
+  	file.delete
+  end if
+end function
+whoisF = function(params)
+  if params.len != 1 or params[0] == "-h" or params[0] == "--help" then
+  	return (command_info("whois_usage"))
+  else
+  	address = params[0]
+  	return (whois(address))
+  end if
+end function
+//	decipher	//
+GetPassword = function(credSr, file)
+  if credSr.len != 2 then return ERRORr("wrong syntax")
+  credDr = credSr[0] + " " + LibC.decipher(credSr[1])
+  return credDr
+end function
+decipherFile = function(file, params)
+	info("decipherFile")
+	if file.is_binary then return ERRORr("file is binary")
+  if not file.has_permission("r") then return ERRORr("can't read file. Permission denied")
+  if file.get_content.len == 0 then return ERRORr("file empty")
+  lines = file.get_content.split("\n")
+  password = null
+  if lines.len == 1 then
+    userPass = lines[0].split(":")
+    password = GetPassword(userPass, file)
+  else
+    print("Multiple users found.")
+    numLine = 1
+    for line in lines
+      if line.len > 0 then
+        print(numLine + ": " + line)
+        numLine = numLine + 1
+      end if
+    end for
+    option = ""
+    inputOk = false
+    while( not inputOk )
+      option = user_input("Select: ").to_int
+      if typeof(option) != "number" or (option < 1 or option > lines.len) then
+        print("Invalid input. Type a valid number")
+      else
+        inputOk = true
+      end if
+    end while
+    userPass = lines[option - 1].split(":")
+    print("Selected user: " + userPass[0])
+    password = GetPassword(userPass, file)
+  end if
+  if password then return (password)
+  return ERRORr("Can't find password")
+end function
+decipherHash = function(params)
+	info("decipherHash")
+  PARAMS = params[0].split(":")
+  if PARAMS.len > 2 then return "<program> <user:hash|hash|encrypted file>"
+  if PARAMS.len == 2 then
+    user = PARAMS[0]
+    hash = PARAMS[1]
+    return user + " " + LibC.decipher(hash)
+  else
+    hash = PARAMS[0]
+    return LibC.decipher(hash)
+  end if
+end function
+decipherF = function(params)
+	info("decipherF")
+  if not LibC then return ("Error: Missing crypto library")
+  if params.len == 0 or params[0] == "-h" or params[0] == "--help" then return "<program> <user:hash|hash|encrypted file>"
+  origFile = params[0]
+  file = host.File(origFile)
+  if file then return decipherFile(file, params)
+  print("can't find file: " + origFile)
+  return decipherHash(params)
+end function
+//
+connectService = function(params, type)
+	if params.len < 2 or params.len > 3 then return ("ssh <pass> <ip> <port>")
+	pass = params[0]
+	ip = params[1]
+	port = 22
+	if type == "ftp" then port = 21
+	if params.len == 3 then port = params[2].to_int
+	if typeof(port) != "number" then return ("Invalid port: " + port)
+	print("Connecting...")
+	shell = shell.connect_service(ip, port, "root", pass, type)
+	if shell then shell.start_terminal
+end function
+
+getShellF = function(params)
+	ip = params[0]
+	pass = params[1]
+	port = 22
+	if params.len > 2 then port = params[2]
+	globals.shell = shell.connect_service(ip, port, "root", pass)
+	globals.host = shell.host_computer
+	return shell.host_computer.public_ip + " " + shell.host_computer.local_ip
+end function
+
+emptyShellF = function()
+	globals.shell = get_shell
+	globals.host = shell.host_computer
+end function
+
+NAME = function()
+
+end function
+
+NAME = function()
+
+end function
+
+NAME = function()
+
+end function
+
+CMD = {}
+
+CMD.qwerQwerQwer1 = function(params)
+
+end function
+CMD.qwerQwerQwer2 = function(params)
+
+end function
+CMD.qwerQwerQwer3 = function(params)
+
+end function
+
+whoisF = function(params)
+  if params.len != 1 or params[0] == "-h" or params[0] == "--help" then
+  	return (command_info("whois_usage"))
+  else
+  	address = params[0]
+  	return (whois(address))
+  end if
+end function
+ps = function(params)
+  if params.len > 0 then return (command_info("ps_usage"))
+  output = shell.host_computer.show_procs
+  return (format_columns(output))
+end function
+
+definitionProgram = function(input)
+  if input[0] == "clear" then clear_screen
+  if input[0] == "exit" then exit()
+  if input[0] == "com" then print(commandListF(input[1:]))//Not Work
+  if input[0] == "cat" then print(cat(input[1:]))
+  if input[0] == "ifconfig" or input[0] == "ifcg" then print(ifconfig(input[1:]))
+  if input[0] == "decipher" or input[0] == "dr" then print(decipherF(input[1:]))
+  if input[0] == "passwd" then print(passwd(input[1:]))
+  if input[0] == "whois" then print(whoisF(input[1:]))
+  if input[0] == "mkdir" then print(mkdir(input[1:]))
+  if input[0] == "kill" then print(kill(input[1:]))
+  if input[0] == "ls" then print(ls(input[1:]))
+  if input[0] == "mv" then print(mv(input[1:]))
+  if input[0] == "ps" then print(ps(input[1:]))
+  if input[0] == "rm" then print(rm(input[1:]))
+  if input[0] == "ssh" then print(connectService(input[1:],"ssh"))
+  if input[0] == "ftp" then print(connectService(input[1:],"ftp"))
+  if input[0] == "pwd" then print(CurrentPath)
+  if input[0] == "cd" then globals.CurrentPath = input[1]// Нужна нормальная функция с проверками существования пути
+  if input[0] == "gs" or input[0] == "getshell" then print(getShellF(input[1:]))
+  if input[0] == "es" or input[0] == "emptyshell" then print(emptyShellF())
+  if input[0] == "NAME" then print(NAME(input[1:]))
+  if input[0] == "NAME" then print(NAME(input[1:]))
+  if input[0] == "NAME" then print(NAME(input[1:]))
+end function
+
+// Var //
+shell = get_shell
+host = get_shell.host_computer
+flag_i = false
+
+// Init //
+LibX = includeLib("metaxploit.so")
+LibC = includeLib("crypto.so")
+if isAParam("-i") then flag_i = true
+
+// Main //
+if params.len != 0 then
+	if params[0] == "-h" or params[0] == "--help" then "run"
+end if
+
+print("User: " + active_user)
+if active_user != "root" then
+  rootShell = get_shell("root", user_input("RootPassword: ", true))
+  if not rootShell then exit("Incorrect password")
+  rootShell.launch(program_path)
+  exit()
+end if
+CurrentPath = current_path
+while 1
+	inputS = user_input("cmd>" + CurrentPath + "#" + " ")
+	inputS = inputS.trim
+	inputL = inputS.split(" ")
+	if inputL then definitionProgram(inputL)
+end while

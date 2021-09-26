@@ -1,0 +1,40 @@
+Encode = function(password)
+	caesar = function(pass, type)
+		pass = pass.lower
+		numb = 0
+		for i in pass.indexes
+			pp = rnd(pass[i].code)
+			if i > ((pass.len - 1) * 0.75) then
+				pp = pp / i
+			end if
+			numb = numb + pp
+		end for
+		for x in range(5)
+			if numb > 100000 then
+				numb = numb / 10
+			end if
+		end for
+		crypt = function(letter, type)
+			if type == "enc" then return letter+numb
+			if type == "dec" then return letter-numb
+		end function
+		out = []
+		for i in pass.indexes
+			c = pass[i].code
+			if i < 100 then
+				c = c / 0.6
+				c = c - 2
+			end if
+			if i > 117 then
+				c = c / 1.4
+				c = c + 2
+			end if
+			c = round(c)
+			if c > 10000 then c = c / 92
+			out.push(c)
+		end for
+		return out.join("")
+	end function
+	output = caesar(password, "enc")
+	return output
+end function

@@ -1,0 +1,12 @@
+//символы допустимые в имени файла
+//10      45  46  48-57   65-90   95  97-122 119-163дичь
+//пробел  -   .   [0-9]   [A-Z]   _   [a-z]
+// длинна - 128
+// touch не может работать с символами [ - _ ] "Error: invalid path", хотя .File работает
+
+i=0
+if params.len>0 then i=params[0].to_int
+while 1
+    print(i+"        "+get_shell.host_computer.touch("/test/"+i,char(i)))
+    i=i+1
+end while

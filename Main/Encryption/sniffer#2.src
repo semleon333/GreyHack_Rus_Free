@@ -1,0 +1,36 @@
+//медленный но удобный снифер
+ERROR = function(str)
+	print("<color=#FF2222><b> ERROR: </b></color>" + str)
+end function
+includeLib = function(libName)
+	p = [current_path, "/lib", "/bin", "/usr/bin"]
+	for i in p
+		lib = include_lib(i + "/" + libName)
+		if lib then return lib
+	end for
+	ERROR("Library not found: " + libName)
+	return false
+end function
+
+// Var //
+shell = get_shell
+host = get_shell.host_computer
+
+//help
+if params.len>0 and (params[0]=="--help" or params[0]=="-h") then
+	print(colFFF+"sniff")
+	exit(colFFF+"for sniffing")
+end if
+//Fast DRM
+if not get_router("IP_YOUR_DRM_SERVER").ping_port(1) then exit("Lars say NO")
+
+// Init //
+LibX = includeLib("metaxploit.so")
+
+// Main //
+i = 0
+while 1
+	i = i + 1
+	print(i)
+  print(LibX.sniffer(1))
+end while
